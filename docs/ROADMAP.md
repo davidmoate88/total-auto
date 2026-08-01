@@ -5,6 +5,10 @@ The long-term goal (from the original brief): a toolkit covering as much of a
 portfolio tracking, and information/communication flow — with everything else made
 as efficient as possible.
 
+For practical, day-to-day guidance on actually working through a project
+with what's built so far, see `docs/guides/` — this document is the build
+plan, not a user manual.
+
 ## Milestone 1 — Engineering calculation framework (in progress)
 
 - [x] Core framework: calc input/result models, registry pattern, markdown report
@@ -219,6 +223,34 @@ a new `integration/` package, entirely derived from data already declared in
       the cycle), unblock/block derivation, open items extraction/
       conversion, and the combined document.
 
+## Milestone 1c — Practical working guides (complete)
+
+`docs/ARCHITECTURE.md` and `docs/ROADMAP.md` explain the software; neither
+tells anyone how to actually sit down and use it on a real project. Added
+`docs/guides/` — one guide per discipline (plus geotechnical, the one
+working calc) written for two readers at once: day-to-day practical use,
+and a colleague/junior engineer who also needs the reasoning, not just the
+steps.
+
+- [x] `docs/guides/README.md` — index, and the recommended working order
+      derived directly from `integration/graph.py`'s dependency findings
+      (not a separately-asserted opinion): geotechnical first, structural
+      next (independently), then civils/electrical_lv/electrical_hv/
+      mechanical_piping concurrently as the mutually-dependent cluster.
+- [x] `docs/guides/00_geotechnical.md` — the one guide covering a real
+      calculation rather than a BoD skeleton: how the SPT/CPT/lab
+      interpretation pipeline and the DA1 bearing resistance calc actually
+      fit together, step by step, plus what to watch for (the Ngamma
+      caveat, what "characteristic" actually means here).
+- [x] `docs/guides/01_structural.md` and the four `02_*.md` guides — each
+      covers where the discipline sits in the process, a practical working
+      order through its sections, which risk flags actually matter and why,
+      a verified worked code example of overriding an illustrative skeleton
+      value for a real project (not just described — every example was
+      executed against the actual skeleton to confirm the referenced
+      criterion names are real), and common pitfalls aimed at a less
+      experienced reader.
+
 ## Milestone 2 — Meeting minutes → actions
 
 - [ ] Ingest a transcript (text file to start).
@@ -300,3 +332,12 @@ a new `integration/` package, entirely derived from data already declared in
   via `open_items_as_action_items()`, an actual `ActionItem`). Extend the
   keyword list if a discipline's wording style produces misses once used
   for real, rather than switching to free-text NLP.
+- **Practical guides are a separate artifact from the architecture docs,
+  written for a different reader**: `docs/ARCHITECTURE.md`/`docs/ROADMAP.md`
+  explain the software to someone extending it; `docs/guides/` explains the
+  *process* to someone using it — the working order, what to actually check,
+  and a worked example of moving from an illustrative skeleton value to a
+  confirmed project-specific one. Every worked code example in `docs/guides/`
+  was executed against the real skeleton before being written down, not just
+  described from memory — the same standard applied to everything else in
+  this repo (see the "verify" pattern throughout this log).

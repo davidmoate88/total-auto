@@ -5,6 +5,11 @@ contract, so the system can grow one piece at a time without earlier pieces
 needing rework. This doc is the map — what exists, what's stubbed, and how the
 pieces are meant to connect once they're all built out.
 
+This is the *technical* map. For practical guidance on actually working
+through a real project discipline by discipline — what order, what to watch
+for, worked examples of overriding the illustrative skeleton values — see
+`docs/guides/` instead, starting with `docs/guides/README.md`.
+
 ## Domain map
 
 | Package | Purpose | Status |

@@ -7,7 +7,9 @@ minutes, actions, reminders).
 
 This repo is being built incrementally. See `docs/ARCHITECTURE.md` for the domain map
 (what's built vs. scaffolded), `docs/ROADMAP.md` for the full vision and build order,
-and **`docs/HANDOFF.md` first if you're picking this up in Claude Code** — it has the
+**`docs/guides/`** for practical guides to actually working through a project
+discipline by discipline (start with `docs/guides/README.md`), and
+**`docs/HANDOFF.md` first if you're picking this up in Claude Code** — it has the
 exact steps and open items from where this was left off.
 
 ## Status
@@ -147,7 +149,16 @@ total-auto/
 └── docs/
     ├── ARCHITECTURE.md             # Domain map, design principles, integration points
     ├── ROADMAP.md                  # Full vision and build order
-    └── HANDOFF.md                  # Start here if continuing in Claude Code
+    ├── HANDOFF.md                  # Start here if continuing in Claude Code
+    ├── examples/                    # Generated output samples per discipline + combined
+    └── guides/                      # Practical "how to actually work through this" guides
+        ├── README.md                # Index + recommended reading/working order
+        ├── 00_geotechnical.md       # The one working calc — run it, read its output
+        ├── 01_structural.md        # Clean chain: depends only on geotechnical
+        ├── 02_civils.md            # Four-way concurrent cluster (with the next three)
+        ├── 02_electrical_lv.md
+        ├── 02_electrical_hv.md
+        └── 02_mechanical_piping.md
 ```
 
 ## Design principles
