@@ -137,10 +137,20 @@ mechanical piping**.
       classification standards/risk flag (the project-specific addition to
       this discipline) are retained and re-tested to confirm they survive
       the detail pass.
-- [ ] Detail pass on HV electrical and mechanical piping (fill in
-      criteria/assumptions/exclusions/deliverables per section) — same
-      pattern as civils, structural, and LV electrical, one discipline at a
-      time.
+- [x] Detail pass, HV electrical — every section now carries illustrative
+      design criteria (HV voltage class kept explicitly generic, system
+      fault level sourced from the DNO connection offer, switchgear
+      topology, transformer rating tied to the LV load schedule/vector
+      group/cooling class, protection grading margin, cable bending
+      radius, touch/step potential basis, HV arc flash calculation method),
+      working assumptions, exclusions, and deliverables. Same
+      illustrative-values caveat as the other three disciplines done so far.
+      The "kept generic across voltage classes" scope decision and the
+      cross-discipline transformer/LV-load-schedule interface are retained
+      and re-tested to confirm they survive the detail pass.
+- [ ] Detail pass on mechanical piping (fill in
+      criteria/assumptions/exclusions/deliverables per section) — the last
+      discipline to receive this treatment, same pattern as the other four.
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
       Code per the project owner's direction; not started for any discipline

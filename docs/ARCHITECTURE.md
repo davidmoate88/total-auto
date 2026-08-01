@@ -109,23 +109,28 @@ already flagged in the LV electrical module, at the piping/electrical boundary.
 For all five, criteria, assumptions, and deliverables were initially left
 empty — architecture before detail (see docs/examples/ for a generated look
 at each current output shape). The detail pass is now under way, one
-discipline at a time: **`civils.py`, `structural.py`, and `electrical_lv.py`
-now have criteria, assumptions, exclusions, and deliverables populated.**
-Civils covers survey tolerances, SuDS discharge/climate-change criteria,
-flood freeboard, pavement design life, retaining wall design working life,
-etc. Structural covers design working life/consequence class, platform
-loading and minimum walkway width, stair/ladder pitch, guard-rail
-height/load/gap limits, notional horizontal robustness load, expansion joint
-spacing and galvanizing coating thickness, etc. LV electrical covers system
-voltage/frequency/earthing system, voltage drop and cable derating ambient,
-earth fault loop impedance/bonding conductor sizing, motor starting
-threshold and enclosure IP rating, generator changeover/UPS autonomy,
-lighting levels, hazardous area zone classification categories, and arc
-flash study trigger — same "verify before real use" caveat as their
-standards lists in all three cases, since these are illustrative UK-practice
-starting values, not confirmed project- or client-specific figures. HV
-electrical and mechanical piping still have their architecture-pass skeleton
-only, pending the same detail treatment. The corresponding
+discipline at a time: **`civils.py`, `structural.py`, `electrical_lv.py`, and
+`electrical_hv.py` now have criteria, assumptions, exclusions, and
+deliverables populated.** Civils covers survey tolerances, SuDS
+discharge/climate-change criteria, flood freeboard, pavement design life,
+retaining wall design working life, etc. Structural covers design working
+life/consequence class, platform loading and minimum walkway width,
+stair/ladder pitch, guard-rail height/load/gap limits, notional horizontal
+robustness load, expansion joint spacing and galvanizing coating thickness,
+etc. LV electrical covers system voltage/frequency/earthing system, voltage
+drop and cable derating ambient, earth fault loop impedance/bonding
+conductor sizing, motor starting threshold and enclosure IP rating,
+generator changeover/UPS autonomy, lighting levels, hazardous area zone
+classification categories, and arc flash study trigger. HV electrical
+covers the voltage class (kept explicitly generic, per project direction),
+fault level sourced from the DNO connection offer, switchgear topology,
+transformer rating tied directly to the LV load schedule, protection
+grading margin, HV cable bending radius, touch/step potential basis, and
+HV arc flash calculation method — same "verify before real use" caveat as
+their standards lists in all four cases, since these are illustrative
+UK-practice starting values, not confirmed project- or client-specific
+figures. Mechanical piping still has its architecture-pass skeleton only,
+pending the same detail treatment — the last of the five. The corresponding
 `calcs/<discipline>/` modules (beyond geotechnical) are not yet built for any
 discipline.
 

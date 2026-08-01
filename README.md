@@ -40,9 +40,9 @@ B31.3 and BS EN 13480 listed). Each also carries risk flags (`core/risk.py`)
 wherever a permanent design implies a distinct, riskier construction-stage or
 compliance-sequencing condition. The detail pass — filling in design criteria,
 assumptions, exclusions, and deliverables per section — is now under way:
-**civils, structural, and LV electrical are done**; HV electrical and
-mechanical piping still have their architecture-pass skeleton only. See
-`docs/examples/` for a generated look at each discipline's current output.
+**civils, structural, LV electrical, and HV electrical are done**; mechanical
+piping is the last discipline still on its architecture-pass skeleton only.
+See `docs/examples/` for a generated look at each discipline's current output.
 
 ## Getting started
 

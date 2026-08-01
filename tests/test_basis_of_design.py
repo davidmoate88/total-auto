@@ -264,6 +264,37 @@ def test_electrical_hv_render_includes_project_reference_and_all_section_names()
         assert section.name in report
 
 
+def test_electrical_hv_detail_pass_populates_criteria_assumptions_exclusions_and_deliverables():
+    # 2nd-pass check: every HV electrical section now carries actual design
+    # criteria, working assumptions, exclusions, and deliverables -- not just
+    # scope/standards/interfaces from the architecture pass.
+    bod = build_electrical_hv_bod_skeleton()
+    for name, section in bod.sections().items():
+        assert section.criteria, f"{name} missing criteria"
+        assert section.assumptions, f"{name} missing assumptions"
+        assert section.exclusions, f"{name} missing exclusions"
+        assert section.deliverables, f"{name} missing deliverables"
+
+
+def test_electrical_hv_voltage_class_still_generic_after_detail_pass():
+    # The "kept generic across HV voltage classes" scope decision must survive
+    # the detail pass, not just the architecture pass.
+    bod = build_electrical_hv_bod_skeleton()
+    voltage_criterion = next(
+        (c for c in bod.design_standards_and_criteria.criteria if c.name == "HV voltage class"), None
+    )
+    assert voltage_criterion is not None
+    assert "generic" in voltage_criterion.value.lower()
+    assert any("generic" in e.lower() for e in bod.design_standards_and_criteria.exclusions)
+
+
+def test_electrical_hv_transformer_criteria_reference_lv_load_schedule():
+    bod = build_electrical_hv_bod_skeleton()
+    rating_criterion = next((c for c in bod.transformers.criteria if c.name == "Transformer rating"), None)
+    assert rating_criterion is not None
+    assert "lv load schedule" in rating_criterion.value.lower()
+
+
 def test_mechanical_piping_skeleton_has_all_nine_sections():
     bod = build_mechanical_piping_bod_skeleton()
     assert set(bod.sections().keys()) == set(MECHANICAL_PIPING_SECTION_NAMES)
