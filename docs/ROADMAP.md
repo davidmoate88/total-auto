@@ -50,13 +50,25 @@ mechanical piping**.
       a starter list of applicable UK standards (flagged for verification,
       same caveat as the geotechnical module), and known cross-discipline
       interfaces; criteria/assumptions/deliverables left empty for the detail pass.
-- [ ] Structural basis of design skeleton — elements not yet agreed.
+- [x] Structural basis of design skeleton — scope explicitly narrowed to
+      **industrial access steelwork** (platforms, walkways, stairs, ladders,
+      handrails/guard-rails, supporting steel frame), not multi-storey/occupied
+      buildings — that's parked, not deleted. 9 sections: design standards &
+      criteria, substructure & foundations, primary steel frame, platforms &
+      walkways, stairs & ladders, handrails & guard-rails, structural integrity
+      & robustness, temporary works, movement/tolerances/durability. Spans both
+      the structural Eurocodes (EN 1990/1991/1993) and the machinery/access
+      safety standards (EN ISO 14122 series, Machinery Directive) — see
+      `structural.py`'s docstring for the standards-verification caveat.
 - [ ] LV electrical basis of design skeleton.
 - [ ] HV electrical basis of design skeleton.
 - [ ] Mechanical piping basis of design skeleton.
-- [ ] Detail pass on civils (fill in criteria/assumptions/deliverables per
-      section, build the corresponding calcs/civil/ modules) — deferred to
-      Claude Code per the project owner's direction.
+- [ ] Multi-storey/occupied-building structural elements (floor vibration,
+      lateral stability/sway, roof structure, fire engineering) — parked per
+      project owner's direction; revisit if a future project needs them.
+- [ ] Detail pass on civils and structural (fill in criteria/assumptions/
+      deliverables per section, build the corresponding calcs/ modules) —
+      deferred to Claude Code per the project owner's direction.
 
 ## Milestone 2 — Meeting minutes → actions
 

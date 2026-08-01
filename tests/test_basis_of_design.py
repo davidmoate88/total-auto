@@ -1,6 +1,7 @@
 from basis_of_design.civils import CIVILS_SECTION_NAMES, build_civils_bod_skeleton
 from basis_of_design.core import BasisOfDesignSection
 from basis_of_design.render import render_basis_of_design
+from basis_of_design.structural import STRUCTURAL_SECTION_NAMES, build_structural_bod_skeleton
 
 
 def test_civils_skeleton_has_all_nine_sections():
@@ -52,3 +53,32 @@ def test_civils_skeleton_sections_all_currently_carry_some_content():
     # interfaces when the skeleton was written, so none render as bare/skeleton-only.
     bod = build_civils_bod_skeleton()
     assert all(s.is_populated() for s in bod.sections().values())
+
+
+def test_structural_skeleton_has_all_nine_sections():
+    bod = build_structural_bod_skeleton()
+    assert set(bod.sections().keys()) == set(STRUCTURAL_SECTION_NAMES)
+    assert len(bod.sections()) == 9
+
+
+def test_structural_every_section_has_a_scope_and_at_least_one_standard_or_interface():
+    bod = build_structural_bod_skeleton()
+    for name, section in bod.sections().items():
+        assert section.scope, f"{name} has no scope description"
+        assert section.standards or section.interfaces, f"{name} has neither standards nor interfaces"
+
+
+def test_structural_scope_excludes_multi_storey_building_elements():
+    # Sanity-check the deliberate scope pivot (industrial access steelwork, not
+    # occupied multi-storey buildings) is actually recorded, not just implied.
+    bod = build_structural_bod_skeleton()
+    criteria_section = bod.design_standards_and_criteria
+    assert any("multi-storey" in e.lower() or "parked" in e.lower() for e in criteria_section.exclusions)
+
+
+def test_structural_render_includes_project_reference_and_all_section_names():
+    bod = build_structural_bod_skeleton(project_reference="PRJ-002")
+    report = render_basis_of_design("Structural", bod.sections(), project_reference=bod.project_reference)
+    assert "PRJ-002" in report
+    for section in bod.sections().values():
+        assert section.name in report
