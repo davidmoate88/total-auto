@@ -221,11 +221,32 @@ criterion). The device's effective operation current (I2) defaults to
 directly. First module in a new discipline (`calcs/electrical_lv/`), and
 the first calc built outside civils/structural/geotechnical.
 
+**Second electrical (LV) module**: `calcs/electrical_lv/load_schedule_diversity.py`
+— answers `lv_distribution_and_reticulation`'s "Load schedule / diversity"
+requirement: aggregates a pasted list of LV loads into one maximum demand
+current. Correctly combines loads as real/reactive power (`P`/`Q` summed
+separately, then `S=sqrt(P²+Q²)`), not by summing individual load currents
+directly — currents at different power factors aren't in phase, so naive
+summation would misstate the resultant. Same "flag, don't guess" reasoning
+as the cable sizing module, one level up: BS 7671/the IEE On-Site Guide give
+worked diversity allowances for standard *domestic* circuit types, but this
+BoD is scoped to plant/industrial distribution, where diversity depends on
+each load's actual operational duty (duty vs. standby plant, intermittent
+vs. continuous process equipment) — no single fixed table applies, so
+`diversity_factor_percent` is a required per-load direct input (default
+100%, i.e. no diversity, the conservative starting point). Same lenient-
+paste-parsed-inside-`calculate()` pattern as `cut_fill_balance.py`/
+`slope_stability.py`. Its output (maximum demand current) is designed to
+feed directly into `cable_sizing_voltage_drop.py`'s `design_current_a` (Ib)
+for the main incoming/distribution cable — the first calc-to-calc handoff
+within a single discipline in this repo.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, the beam-column interaction check, highways/pavement
-civils calcs, more electrical LV calcs, HV electrical calcs, mechanical
-piping calcs) plus independent verification of every illustrative value
-flagged throughout the detail passes.
+civils calcs, motor starting/earth fault loop impedance/arc flash for
+electrical LV, HV electrical calcs, mechanical piping calcs) plus
+independent verification of every illustrative value flagged throughout the
+detail passes.
 
 ## Getting started
 
@@ -251,6 +272,7 @@ python3 -m calcs.civil.cut_fill_balance
 python3 -m calcs.civil.surface_water_discharge
 python3 -m calcs.civil.slope_stability
 python3 -m calcs.electrical_lv.cable_sizing_voltage_drop
+python3 -m calcs.electrical_lv.load_schedule_diversity
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -296,14 +318,15 @@ total-auto/
 │   │   ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
 │   │   ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
 │   │   └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
-│   └── electrical_lv/                # FIRST MODULE BUILT — see below
-│       └── cable_sizing_voltage_drop.py  # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
+│   └── electrical_lv/                # TWO MODULES BUILT — see below
+│       ├── cable_sizing_voltage_drop.py  # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
+│       └── load_schedule_diversity.py    # P/Q load aggregation -> maximum demand current
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
-│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; first calc wired (cable sizing/voltage drop)
+│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; two calcs wired (cable sizing/voltage drop, load schedule/diversity)
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
@@ -329,6 +352,7 @@ total-auto/
 │   ├── test_surface_water_discharge.py  # Validates orifice sizing arithmetic
 │   ├── test_slope_stability.py     # Validates Fellenius method arithmetic and paste parsing
 │   ├── test_cable_sizing_voltage_drop.py  # Validates BS 7671 Reg 433.1.1 conditions and voltage drop arithmetic
+│   ├── test_load_schedule_diversity.py    # Validates P/Q load aggregation and paste parsing
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

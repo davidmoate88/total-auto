@@ -22,8 +22,9 @@ criteria, assumptions, exclusions, and deliverables are now populated per
 section. Calculation logic itself (the corresponding `calcs/electrical_lv/`
 modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
-module exists (see calcs/electrical_lv/cable_sizing_voltage_drop.py for the
-first one); the rest remain unset until built.
+module exists (see calcs/electrical_lv/cable_sizing_voltage_drop.py and
+calcs/electrical_lv/load_schedule_diversity.py for the first two); the rest
+remain unset until built.
 """
 
 from __future__ import annotations
@@ -123,7 +124,11 @@ def build_electrical_lv_bod_skeleton(project_reference: Optional[str] = None) ->
                     standard_reference="BS 7671",
                     calc_module_reference="electrical_lv_cable_sizing_voltage_drop",
                 ),
-                CalculationRequirement(name="Load schedule / diversity", description="Aggregated demand across all LV loads."),
+                CalculationRequirement(
+                    name="Load schedule / diversity",
+                    description="Aggregated demand across all LV loads, real/reactive power (P/Q) summation to a maximum demand current, calcs/electrical_lv/load_schedule_diversity.py. Per-load diversity factor is a direct input -- this BoD is scoped to plant/industrial distribution, not a fixed domestic diversity table -- see that module's docstring.",
+                    calc_module_reference="electrical_lv_load_schedule_diversity",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Maximum voltage drop (power circuits)", value="5", unit="%", notes="Typical BS 7671 guidance figure — lighting circuits are usually held to a tighter 3%; confirm both against the project's actual requirement."),

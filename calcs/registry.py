@@ -12,6 +12,7 @@ from calcs.civil.retaining_wall_stability import MODULE as CIVIL_RETAINING_WALL_
 from calcs.civil.slope_stability import MODULE as CIVIL_SLOPE_STABILITY
 from calcs.civil.surface_water_discharge import MODULE as CIVIL_SURFACE_WATER_DISCHARGE
 from calcs.electrical_lv.cable_sizing_voltage_drop import MODULE as ELECTRICAL_LV_CABLE_SIZING_VOLTAGE_DROP
+from calcs.electrical_lv.load_schedule_diversity import MODULE as ELECTRICAL_LV_LOAD_SCHEDULE_DIVERSITY
 from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACITY
 from calcs.structural.base_plate import MODULE as STRUCTURAL_BASE_PLATE
 from calcs.structural.beam_capacity import MODULE as STRUCTURAL_BEAM_CAPACITY
@@ -34,6 +35,7 @@ CALC_REGISTRY: list[CalcModule] = [
     CIVIL_SURFACE_WATER_DISCHARGE,
     CIVIL_SLOPE_STABILITY,
     ELECTRICAL_LV_CABLE_SIZING_VOLTAGE_DROP,
+    ELECTRICAL_LV_LOAD_SCHEDULE_DIVERSITY,
 ]
 
 

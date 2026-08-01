@@ -316,6 +316,31 @@ plan, not a user manual.
       utilisation 0.9456, current-carrying capacity governing) and
       end-to-end in a real browser -- UI result matched the CLI run
       exactly. 238/238 tests passing.
+- [x] Second electrical (LV) calc module:
+      `calcs/electrical_lv/load_schedule_diversity.py` -- aggregates a
+      pasted list of LV loads (name, rated_power_kw, power_factor,
+      diversity_factor_percent) into one maximum demand current, answering
+      the same section's "Load schedule / diversity" `CalculationRequirement`.
+      Combines loads as real/reactive power (`P_total=sum(Pi)`,
+      `Q_total=sum(Qi)`, `S_total=sqrt(P_total^2+Q_total^2)`), NOT by summing
+      individual load currents directly -- currents at different power
+      factors aren't in phase, so naive summation would misstate the
+      resultant. `diversity_factor_percent` is a required per-load direct
+      input (default 100%, no diversity) -- same "flag, don't guess"
+      reasoning as the cable sizing module: BS 7671/the IEE On-Site Guide's
+      diversity allowances (Table H1) are worked out for domestic circuit
+      types, but this BoD is scoped to plant/industrial distribution, where
+      diversity depends on each load's actual operational duty (e.g. a
+      standby pump can legitimately carry 0% diversity) -- no single fixed
+      table applies. Same lenient-paste-parsed-inside-`calculate()` pattern
+      as `cut_fill_balance.py`/`slope_stability.py`. Its maximum demand
+      current output is designed to feed directly into
+      `cable_sizing_voltage_drop.py`'s `design_current_a` (Ib) -- the first
+      calc-to-calc handoff within a single discipline in this repo. 13 new
+      tests, verified against a hand-derived 4-load example (P/Q/S totals
+      and both three-phase/single-phase maximum demand current) and
+      end-to-end in a real browser -- UI result (37.54A) matched the CLI
+      run exactly. 251/251 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -458,18 +483,21 @@ mechanical piping**.
       civils has its first six (`lateral_earth_pressure.py`,
       `retaining_wall_stability.py`, `foul_drainage.py`,
       `cut_fill_balance.py`, `surface_water_discharge.py`,
-      `slope_stability.py`), and electrical_lv has its first
+      `slope_stability.py`), and electrical_lv has its first two
       (`cable_sizing_voltage_drop.py`, BS 7671 Reg 433.1.1 current-carrying
       capacity check + Appendix 4 voltage drop check -- tabulated current
       rating and mV/A/m are required direct inputs, not derived, since BS
       7671's cable tables are installation-method-specific and amendment-
-      revised) -- see Milestone 1 above for all.
+      revised; and `load_schedule_diversity.py`, P/Q real+reactive power
+      load aggregation to a maximum demand current, feeding its result
+      straight into the first module's `design_current_a`) -- see
+      Milestone 1 above for all.
       Remaining: the beam-column combined bending+axial interaction, block
       tearing, base plate bending, civils attenuation volume sizing (open
       item above -- needs the FSR/FEH rainfall model) and highways/pavement
-      calcs, the rest of electrical_lv (load schedule/diversity, motor
-      starting, earth fault loop impedance, arc flash), and all calcs for
-      electrical_hv/mechanical_piping. Independent verification of every
+      calcs, the rest of electrical_lv (motor starting, earth fault loop
+      impedance, arc flash), and all calcs for electrical_hv/
+      mechanical_piping. Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current
       standard texts/project requirements is still outstanding for all
