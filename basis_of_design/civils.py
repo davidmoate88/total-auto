@@ -329,8 +329,16 @@ def build_civils_bod_skeleton(project_reference: Optional[str] = None) -> Civils
                 Interface(with_discipline="structural", description="Structural design of the retaining element itself."),
             ],
             calculations_required=[
-                CalculationRequirement(name="Lateral earth pressure calculation", standard_reference="BS EN 1997-1"),
-                CalculationRequirement(name="Retaining wall stability (sliding/overturning/bearing)", standard_reference="BS EN 1997-1"),
+                CalculationRequirement(
+                    name="Lateral earth pressure calculation", standard_reference="BS EN 1997-1",
+                    calc_module_reference="civil_lateral_earth_pressure_ec7",
+                    description="Rankine active thrust, both DA1 combinations, calcs/civil/lateral_earth_pressure.py. Wall friction, batter, and sloping backfill are not covered -- see that module's docstring.",
+                ),
+                CalculationRequirement(
+                    name="Retaining wall stability (sliding/overturning/bearing)", standard_reference="BS EN 1997-1",
+                    calc_module_reference="civil_retaining_wall_stability_ec7",
+                    description="Sliding/overturning/bearing utilisation, both DA1 combinations, calcs/civil/retaining_wall_stability.py. Self-weight and allowable bearing pressure are direct inputs -- see that module's docstring.",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Design working life category", value="50", unit="years", notes="BS EN 1990 category 4 (typical for building-associated structures) — confirm if a different category applies."),

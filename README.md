@@ -128,9 +128,28 @@ bearing-resistance prefill handoff: Streamlit widgets ignore a changed
 ground-model interpretation was silently not updating the bearing tab's
 pre-filled fields until a prefill-version counter was added to the key.
 
+**First `calcs/civil/` modules built**, answering `retaining_structures`'s
+two `calculations_required` entries:
+- `calcs/civil/lateral_earth_pressure.py` — Rankine active earth pressure
+  coefficient and resultant thrust (both DA1 combinations), accounting for
+  water table and surcharge. No wall friction/batter/sloping backfill
+  (Rankine's theory only).
+- `calcs/civil/retaining_wall_stability.py` — sliding/overturning/bearing
+  utilisation for a gravity/cantilever wall, both DA1 combinations. Reuses
+  the earth-pressure module's own active-thrust function (recomputing it
+  under each combination's factored soil parameters, the more rigorous
+  approach) and imports `DA1_C1`/`DA1_C2` directly from
+  `calcs/geotechnical/bearing_capacity.py` — one shared Design Approach 1
+  implementation across geotechnical and civils, not a second copy of the
+  same partial factors. Self-weight and allowable bearing pressure are
+  direct inputs — see the module docstring.
+
+See `docs/ARCHITECTURE.md`'s "Civils calcs and cross-domain DA1 reuse"
+section for the full picture.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
-base plate bending, the beam-column interaction check,
-civils/electrical/mechanical piping calcs) plus independent verification of
+base plate bending, the beam-column interaction check, drainage/earthworks
+civils calcs, electrical/mechanical piping calcs) plus independent verification of
 every illustrative value flagged throughout the detail passes.
 
 ## Getting started
@@ -150,6 +169,8 @@ python3 -m calcs.structural.column_capacity
 python3 -m calcs.structural.bolted_shear_connection
 python3 -m calcs.structural.base_plate
 python3 -m calcs.structural.deck_grating
+python3 -m calcs.civil.lateral_earth_pressure
+python3 -m calcs.civil.retaining_wall_stability
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -188,7 +209,9 @@ total-auto/
 │   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
 │   │   ├── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
 │   │   └── deck_grating.py         # BS EN 1991-1-1 loads, EN 1993-1-1 elastic bearing-bar check, UK NA
-│   └── civil/                       # PLACEHOLDER — README + pattern only, no modules yet
+│   └── civil/                       # TWO MODULES BUILT — see below
+│       ├── lateral_earth_pressure.py   # Rankine active earth pressure, EN 1997-1 UK NA DA1
+│       └── retaining_wall_stability.py # Sliding/overturning/bearing check, EN 1997-1 UK NA DA1
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
@@ -213,6 +236,8 @@ total-auto/
 │   ├── test_bolted_shear_connection.py  # Validates EN 1993-1-8 shear/bearing resistance arithmetic
 │   ├── test_base_plate.py          # Validates EN 1993-1-8 base plate bearing / HD bolt tension arithmetic
 │   ├── test_deck_grating.py        # Validates bearing bar tributary load, stress, and deflection arithmetic
+│   ├── test_lateral_earth_pressure.py   # Validates Rankine Ka/Kp and active thrust decomposition
+│   ├── test_retaining_wall_stability.py # Validates sliding/overturning/bearing arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

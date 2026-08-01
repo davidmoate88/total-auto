@@ -16,7 +16,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 |---|---|---|
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Five modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Combined bending+axial (SS6.3.3), block tearing, base plate bending, and moment connections not yet built |
-| `calcs/civil/` | Civil calc modules (drainage, earthworks) | Placeholder — README + pattern only |
+| `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Two modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations) and `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets). Both verified, both wired into the Streamlit UI. Drainage (foul/SuDS), earthworks (cut/fill, slope stability), and highways/pavement calcs not yet built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are next |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -244,6 +244,34 @@ A `bearing_prefill_version` counter (incremented each time the ground model
 tab saves a new prefill) is folded into the bearing module's widget keys, so
 a new prefill genuinely gets fresh widgets rather than being silently
 ignored. This wasn't a hypothetical — it reproduced during verification.
+
+## Civils calcs (`calcs/civil/`) and cross-domain DA1 reuse
+
+The first two `calcs/civil/` modules answer `retaining_structures`'s two
+`calculations_required` entries and are deliberately paired the same way
+`beam_capacity.py`/`column_capacity.py` were: `lateral_earth_pressure.py`
+computes Rankine active thrust (both DA1 combinations, mirroring
+`bearing_capacity.py`'s own DA1-C1/DA1-C2 structure), and
+`retaining_wall_stability.py` checks sliding/overturning/bearing on top of
+it. The reuse goes further than the structural pair, though:
+`retaining_wall_stability.py` imports `DA1_C1`/`DA1_C2` directly from
+`calcs/geotechnical/bearing_capacity.py` — the SAME partial-factor-set
+objects, not a second copy of the same numbers — so Design Approach 1 has
+exactly one implementation shared across geotechnical and civils, not three
+independent reimplementations that could quietly drift apart. It also
+imports `rankine_coefficients()` and `_active_thrust_and_lever_arm()` from
+`lateral_earth_pressure.py` and calls them directly (recomputing active
+thrust from the same characteristic soil parameters under each DA1
+combination) rather than accepting a single pre-computed thrust value — the
+more rigorous approach, since DA1-C2 factors the SOIL PARAMETERS before
+deriving Ka/Pa, not the final force.
+
+The active-thrust resultant itself (`_active_thrust_and_lever_arm`) is
+computed by decomposing the pressure diagram into trapezoidal segments at
+each breakpoint (top, water table if present, base) — exact for the modelled
+piecewise-linear pressure profile (not a numerical approximation), verified
+against the classic closed-form triangle (`0.5*Ka*gamma*H^2` at `H/3`) and
+rectangular-surcharge-block results by hand in the test suite.
 
 ## Design principles
 

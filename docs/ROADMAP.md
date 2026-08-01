@@ -139,6 +139,51 @@ plan, not a user manual.
       computed directly from t/d, same approach as the other modules'
       idealised I-sections). Verified working end-to-end in a real browser
       (governing utilisation matched the CLI run exactly: 0.7273 vs 0.727).
+- [x] First two `calcs/civil/` modules, answering `retaining_structures`'s
+      two `calculations_required` entries in one deliberately-paired build
+      (same pattern as the beam/column pair):
+      - `calcs/civil/lateral_earth_pressure.py` — Rankine active earth
+        pressure coefficient and resultant thrust, both DA1 combinations
+        (mirroring `bearing_capacity.py`'s own DA1-C1/DA1-C2 structure — the
+        governing case for an active thrust is the LARGER value, the
+        opposite direction from a resistance check). Handles water table and
+        surcharge; the active-thrust resultant is found by decomposing the
+        piecewise-linear pressure diagram into trapezoidal segments at each
+        breakpoint (top, water table if present, base) -- exact for the
+        modelled profile, not a numerical approximation. Rankine's theory
+        only: no wall friction, wall batter, or sloping backfill. Cohesion
+        is clipped at zero pressure rather than properly excluding a
+        tension-crack depth -- exact for c'=0 (the recommended backfill
+        case), increasingly approximate otherwise, flagged when triggered.
+        10 new tests, including hand-derivations of the classic
+        `0.5*Ka*gamma*H^2` triangle and rectangular-surcharge-block results.
+      - `calcs/civil/retaining_wall_stability.py` — sliding/overturning/
+        bearing utilisation for a gravity/cantilever wall, both DA1
+        combinations. Reuses `lateral_earth_pressure.py`'s
+        `rankine_coefficients()` and `_active_thrust_and_lever_arm()`
+        directly (recomputing active thrust from characteristic soil
+        parameters under each combination's own factored phi'/c', the more
+        rigorous approach vs. factoring a single pre-computed thrust value)
+        and imports `DA1_C1`/`DA1_C2` directly from
+        `bearing_capacity.py` -- one shared DA1 implementation across
+        geotechnical and civils. Self-weight/lever-arm, base friction
+        coefficient, and allowable bearing pressure are direct inputs
+        (each individually flagged, following this session's established
+        "flag, don't guess" pattern for constants below full confidence).
+        Passive resistance uses a simpler Rankine embedment formula (no
+        water table/surcharge on that side). Eccentricity checked against
+        the middle-third rule. 11 new tests, independently re-deriving
+        expected sliding/overturning values via the reused shared functions
+        rather than re-asserting the module's own arithmetic; one test
+        documents a genuine, correctly-modelled design trade-off found
+        during testing (more self-weight improves sliding/overturning but
+        *worsens* bearing demand -- initially written as a test bug
+        assuming weight helps everything, caught by the assertion failing
+        for the right reason).
+      Both verified end-to-end in a real browser (retaining wall stability
+      UI result 0.8027 matched the CLI run 0.803 exactly) and wired into
+      `basis_of_design/civils.py` via `calc_module_reference`. 186/186 tests
+      passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -276,13 +321,15 @@ mechanical piping**.
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
       Code per the project owner's direction. **In progress**: structural has
-      four modules built and wired (`beam_capacity.py`, `column_capacity.py`,
-      `bolted_shear_connection.py`, `base_plate.py`, see Milestone 1 above).
+      five modules built and wired (`beam_capacity.py`, `column_capacity.py`,
+      `bolted_shear_connection.py`, `base_plate.py`, `deck_grating.py`), and
+      civils has its first two (`lateral_earth_pressure.py`,
+      `retaining_wall_stability.py`) -- see Milestone 1 above for both.
       Remaining: the beam-column combined bending+axial interaction, block
-      tearing, base plate bending, and all calcs for
-      civils/electrical_lv/electrical_hv/mechanical_piping. Independent
-      verification of every "illustrative value" flagged throughout the
-      detail passes against actual current
+      tearing, base plate bending, civils drainage/earthworks/highways
+      calcs, and all calcs for electrical_lv/electrical_hv/mechanical_piping.
+      Independent verification of every "illustrative value" flagged
+      throughout the detail passes against actual current
       standard texts/project requirements is still outstanding for all
       disciplines.
 
