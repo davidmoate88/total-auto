@@ -24,6 +24,7 @@ from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACI
 from calcs.mechanical_piping.line_sizing_velocity_check import MODULE as MECHANICAL_PIPING_LINE_SIZING_VELOCITY_CHECK
 from calcs.mechanical_piping.ped_pesr_classification_check import MODULE as MECHANICAL_PIPING_PED_PESR_CLASSIFICATION_CHECK
 from calcs.mechanical_piping.pipe_stress_check import MODULE as MECHANICAL_PIPING_PIPE_STRESS_CHECK
+from calcs.mechanical_piping.support_load_schedule import MODULE as MECHANICAL_PIPING_SUPPORT_LOAD_SCHEDULE
 from calcs.structural.base_plate import MODULE as STRUCTURAL_BASE_PLATE
 from calcs.structural.beam_capacity import MODULE as STRUCTURAL_BEAM_CAPACITY
 from calcs.structural.beam_column_interaction import MODULE as STRUCTURAL_BEAM_COLUMN_INTERACTION
@@ -58,6 +59,7 @@ CALC_REGISTRY: list[CalcModule] = [
     MECHANICAL_PIPING_LINE_SIZING_VELOCITY_CHECK,
     MECHANICAL_PIPING_PIPE_STRESS_CHECK,
     MECHANICAL_PIPING_PED_PESR_CLASSIFICATION_CHECK,
+    MECHANICAL_PIPING_SUPPORT_LOAD_SCHEDULE,
 ]
 
 

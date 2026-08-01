@@ -19,7 +19,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Six modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it), `slope_stability.py` (Fellenius Method of Slices, both DA1 combinations, slice geometry as a direct input — see below). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items) and highways/pavement calcs not yet built |
 | `calcs/electrical_lv/` | LV electrical calc modules | **Five modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance). All verified, all wired into the Streamlit UI. Motor starting skipped per project direction |
 | `calcs/electrical_hv/` | HV electrical calc modules | **Four modules built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output), `protection_grading.py` (IEC 60255-151 IDMT relay operating times, upstream/downstream grading margin check — curve constants embedded directly, unlike this discipline's other modules), `arc_flash_ppe_check.py` (required PPE arc rating vs a practical PPE limit from an externally-supplied incident energy figure — deliberately shaped differently from the LV arc flash module), `substation_earthing_touch_step.py` (Sverak grid resistance + IEEE 80 tolerable touch/step voltage, checked against an externally-supplied actual mesh/step voltage). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
-| `calcs/mechanical_piping/` | Mechanical piping calc modules | **Three modules built** — `line_sizing_velocity_check.py` (actual velocity vs the API RP 14E erosional velocity limit and a target velocity range — the fifth and final discipline to get a working calc), `pipe_stress_check.py` (ASME B31.3 sustained stress + thermal expansion stress range check from externally-supplied resultant moments — does not perform flexibility analysis), `ped_pesr_classification_check.py` (PED Article 2(1) scope threshold computed directly, conformity assessment bookkeeping from an externally-determined category — see below). All verified, all wired into the Streamlit UI. Support load schedule not yet built |
+| `calcs/mechanical_piping/` | Mechanical piping calc modules | **Four modules built** — `line_sizing_velocity_check.py` (actual velocity vs the API RP 14E erosional velocity limit and a target velocity range — the fifth and final discipline to get a working calc), `pipe_stress_check.py` (ASME B31.3 sustained stress + thermal expansion stress range check from externally-supplied resultant moments — does not perform flexibility analysis), `ped_pesr_classification_check.py` (PED Article 2(1) scope threshold computed directly, conformity assessment bookkeeping from an externally-determined category), `support_load_schedule.py` (per-support reaction load aggregation, unfactored, for handover to structural — see below). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are being built incrementally |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -665,6 +665,35 @@ category is a required direct input, and the module does the safe
 downstream bookkeeping: whether notified body conformity assessment/CE-
 UKCA marking applies, plus a caution when the fluid is Group 1 (dangerous)
 that the category must have come from the correct Group 1 table.
+
+The fourth `calcs/mechanical_piping/` module, `support_load_schedule.py`,
+answers `pipe_stress_analysis_and_supports`'s "Support load schedule"
+`CalculationRequirement` and `supports_structural_and_hazardous_area_interfaces`'s
+"Support load handover format" criterion, and completes every named
+`calculations_required` entry across `basis_of_design/mechanical_piping.py`.
+It's a genuinely different shape from the other three modules — less a
+formula-heavy check, more the actual handover artifact, using the same
+lenient-paste pattern already established by `cut_fill_balance.py`/
+`slope_stability.py` rather than a single-set-of-numbers input model.
+Support reactions come from the same external flexibility analysis
+(CAESAR II or equivalent) that supplies `pipe_stress_check.py`'s resultant
+moments, but the two aren't derived from each other — a stress-check
+moment at a point and a reaction force at a support are different
+quantities from the same upstream source, not a calc-to-calc handoff the
+way `load_schedule_diversity.py`→`cable_sizing_voltage_drop.py` is. Loads
+are handed over *unfactored*, matching real handover practice: the
+receiving structural engineer combines these with everything else already
+acting on that support before applying their own partial factors, the
+same reasoning `beam_capacity.py`/`column_capacity.py` take separate
+permanent/variable inputs rather than one pre-combined figure. An optional
+uniform screening limit gives the module a genuine pass/fail check when a
+support capacity is already known, while being explicit in both the
+docstring and the field description that it's a single uniform limit
+applied to every support, not a per-support capacity lookup — if
+different supports end up with different actual steelwork capacities
+(the normal case once sizes vary), the governing support this module
+reports should be checked against that specific support's real capacity
+directly.
 
 ## Design principles
 

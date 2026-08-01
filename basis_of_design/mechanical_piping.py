@@ -31,9 +31,10 @@ section. Calculation logic itself (the corresponding `calcs/mechanical_piping/`
 modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
 module exists (see calcs/mechanical_piping/line_sizing_velocity_check.py,
-calcs/mechanical_piping/pipe_stress_check.py, and
-calcs/mechanical_piping/ped_pesr_classification_check.py for the first
-three); the rest remain unset until built.
+calcs/mechanical_piping/pipe_stress_check.py,
+calcs/mechanical_piping/ped_pesr_classification_check.py, and
+calcs/mechanical_piping/support_load_schedule.py for the first four); the
+rest remain unset until built.
 This completes the detail pass across all five agreed disciplines.
 """
 
@@ -184,7 +185,11 @@ def build_mechanical_piping_bod_skeleton(project_reference: Optional[str] = None
                     standard_reference="ASME B31.3",
                     calc_module_reference="mechanical_piping_pipe_stress_check",
                 ),
-                CalculationRequirement(name="Support load schedule", description="Loads passed to the structural discipline per support point."),
+                CalculationRequirement(
+                    name="Support load schedule",
+                    description="Aggregates per-support reaction loads (sustained vertical, occasional horizontal) into a schedule for handover to structural, with an optional screening check against a uniform allowable vertical reaction, calcs/mechanical_piping/support_load_schedule.py. Support reactions are required direct inputs from an external flexibility analysis -- see that module's docstring.",
+                    calc_module_reference="mechanical_piping_support_load_schedule",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Sustained stress allowable", value="per ASME B31.3 Sh / BS EN 13480-3 allowable stress tables", notes="Material- and temperature-dependent — no single project-wide figure; looked up per pipe material/grade once selected."),

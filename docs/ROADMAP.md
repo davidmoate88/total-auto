@@ -607,6 +607,31 @@ plan, not a user manual.
       and end-to-end in a real browser (verified the SEP/Group 1 case,
       avoiding the known Streamlit dropdown-click limitation, matching two
       existing pytest cases exactly) -- 352/352 tests passing.
+- [x] Fourth mechanical piping calc module:
+      `calcs/mechanical_piping/support_load_schedule.py` -- answers
+      `pipe_stress_analysis_and_supports`'s "Support load schedule"
+      `CalculationRequirement` and `supports_structural_and_hazardous_area_interfaces`'s
+      "Support load handover format" criterion. This completes every
+      named `calculations_required` entry across
+      `basis_of_design/mechanical_piping.py` (4/4 wired). A genuinely
+      different shape from this discipline's other modules -- less a
+      formula-heavy check, more the actual handover artifact, using the
+      lenient-paste pattern already established by
+      `cut_fill_balance.py`/`slope_stability.py`. Support reactions come
+      from the same external flexibility analysis as
+      `pipe_stress_check.py`'s resultant moments but aren't derived from
+      that module's output -- different quantities, same upstream source.
+      Loads are handed over unfactored, matching real handover practice
+      (the structural discipline applies its own partial factors, same
+      reasoning as `beam_capacity.py`/`column_capacity.py`'s separate
+      permanent/variable inputs). An optional uniform screening limit
+      gives a genuine pass/fail check when a support capacity is already
+      known, explicit that it's one uniform limit, not a per-support
+      capacity lookup. 10 new tests, verified against a hand calculation
+      (3 supports, total vertical 40.3kN, governing S2 at 18.0kN,
+      utilisation 0.9 PASS against a 20kN limit) and end-to-end in a real
+      browser -- UI result (governing reaction 18kN at S2, no limit
+      supplied) matched the CLI run exactly. 362/362 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -781,21 +806,23 @@ mechanical piping**.
       80 tolerable touch/step voltage, checked against an externally-
       supplied actual mesh/step voltage -- splits its scope by confidence
       tier within a single module, embedding the formula, flagging the
-      geometry-dependent actual values), and mechanical_piping has its
-      first three (`line_sizing_velocity_check.py`, actual velocity vs the
-      API RP 14E erosional velocity limit and a target velocity range --
-      pressure drop deliberately left out; `pipe_stress_check.py`, ASME
-      B31.3 sustained stress + thermal expansion stress range check from
+      geometry-dependent actual values), and mechanical_piping now has all
+      four of its named `calculations_required` entries built
+      (`line_sizing_velocity_check.py`, actual velocity vs the API RP 14E
+      erosional velocity limit and a target velocity range -- pressure
+      drop deliberately left out; `pipe_stress_check.py`, ASME B31.3
+      sustained stress + thermal expansion stress range check from
       externally-supplied resultant moments -- does not perform
-      flexibility analysis; and `ped_pesr_classification_check.py`, PED
+      flexibility analysis; `ped_pesr_classification_check.py`, PED
       Article 2(1) scope threshold computed directly, conformity
-      assessment bookkeeping from an externally-determined category -- see
-      those modules' docstrings) -- see Milestone 1 above for all.
+      assessment bookkeeping from an externally-determined category; and
+      `support_load_schedule.py`, per-support reaction load aggregation,
+      unfactored, for handover to structural -- see those modules'
+      docstrings) -- see Milestone 1 above for all.
       Remaining: block tearing, base plate bending, civils attenuation
       volume sizing (open item above -- needs the FSR/FEH rainfall model)
-      and highways/pavement calcs, electrical_lv's motor starting (skipped
-      per project direction for now), and mechanical_piping's support load
-      schedule.
+      and highways/pavement calcs, and electrical_lv's motor starting
+      (skipped per project direction for now).
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current
