@@ -185,12 +185,27 @@ sizing via the standard sharp-edged-orifice equation, both well-established
 hydraulics. The section's other requirement, "Attenuation volume sizing"
 (needs the FSR/FEH rainfall depth-duration-frequency model — a distinct
 empirical dataset, not a formula), is **not built** — tracked as an open
-GitHub issue rather than attempted with unverified figures.
+item in `docs/ROADMAP.md` rather than attempted with unverified figures.
+
+**Sixth civils module**: `calcs/civil/slope_stability.py` — answers
+`earthworks_and_remediation`'s "Slope stability check" via Fellenius'
+(Ordinary) Method of Slices, both DA1 combinations, reusing `DA1_C1`/
+`DA1_C2` from `bearing_capacity.py` (the third module to share that one
+implementation). Deliberately Fellenius, not Bishop's Simplified Method —
+simpler (non-iterative) and well-verified here, but KNOWN CONSERVATIVE
+relative to Bishop's; every result says so, with an extra warning when the
+governing utilisation lands in the 0.9–1.0 band where that bias matters
+most. Slice geometry (weight, base angle, base length, pore pressure) is
+supplied as lenient pasted text, same pattern as `cut_fill_balance.py` —
+this module does not generate slices from a slope profile and trial slip
+circle (a substantial computational-geometry problem kept out of scope,
+same reasoning as `retaining_wall_stability.py`'s self-weight and
+`base_plate.py`'s effective area being direct inputs).
 
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
-base plate bending, the beam-column interaction check, slope stability and
-highways civils calcs, electrical/mechanical piping calcs) plus independent verification of
-every illustrative value flagged throughout the detail passes.
+base plate bending, the beam-column interaction check, highways/pavement
+civils calcs, electrical/mechanical piping calcs) plus independent
+verification of every illustrative value flagged throughout the detail passes.
 
 ## Getting started
 
@@ -214,6 +229,7 @@ python3 -m calcs.civil.retaining_wall_stability
 python3 -m calcs.civil.foul_drainage
 python3 -m calcs.civil.cut_fill_balance
 python3 -m calcs.civil.surface_water_discharge
+python3 -m calcs.civil.slope_stability
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -252,12 +268,13 @@ total-auto/
 │   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
 │   │   ├── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
 │   │   └── deck_grating.py         # BS EN 1991-1-1 loads, EN 1993-1-1 elastic bearing-bar check, UK NA
-│   └── civil/                       # FIVE MODULES BUILT — see below
+│   └── civil/                       # SIX MODULES BUILT — see below
 │       ├── lateral_earth_pressure.py   # Rankine active earth pressure, EN 1997-1 UK NA DA1
 │       ├── retaining_wall_stability.py # Sliding/overturning/bearing check, EN 1997-1 UK NA DA1
 │       ├── foul_drainage.py            # Peak foul flow + Manning's equation pipe capacity check
 │       ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
-│       └── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
+│       ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
+│       └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
@@ -287,6 +304,7 @@ total-auto/
 │   ├── test_foul_drainage.py       # Validates peak flow generation and Manning's equation arithmetic
 │   ├── test_cut_fill_balance.py    # Validates grid-method volume arithmetic and paste parsing
 │   ├── test_surface_water_discharge.py  # Validates orifice sizing arithmetic
+│   ├── test_slope_stability.py     # Validates Fellenius method arithmetic and paste parsing
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

@@ -9,6 +9,7 @@ from calcs.civil.cut_fill_balance import MODULE as CIVIL_CUT_FILL_BALANCE
 from calcs.civil.foul_drainage import MODULE as CIVIL_FOUL_DRAINAGE
 from calcs.civil.lateral_earth_pressure import MODULE as CIVIL_LATERAL_EARTH_PRESSURE
 from calcs.civil.retaining_wall_stability import MODULE as CIVIL_RETAINING_WALL_STABILITY
+from calcs.civil.slope_stability import MODULE as CIVIL_SLOPE_STABILITY
 from calcs.civil.surface_water_discharge import MODULE as CIVIL_SURFACE_WATER_DISCHARGE
 from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACITY
 from calcs.structural.base_plate import MODULE as STRUCTURAL_BASE_PLATE
@@ -30,6 +31,7 @@ CALC_REGISTRY: list[CalcModule] = [
     CIVIL_FOUL_DRAINAGE,
     CIVIL_CUT_FILL_BALANCE,
     CIVIL_SURFACE_WATER_DISCHARGE,
+    CIVIL_SLOPE_STABILITY,
 ]
 
 

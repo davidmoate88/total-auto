@@ -124,7 +124,12 @@ def build_civils_bod_skeleton(project_reference: Optional[str] = None) -> Civils
                     name="Cut/fill balance", description="Earthwork volumes across the site.",
                     calc_module_reference="civil_cut_fill_balance",
                 ),
-                CalculationRequirement(name="Slope stability check", standard_reference="BS EN 1997-1"),
+                CalculationRequirement(
+                    name="Slope stability check",
+                    description="Circular slip surface check (Fellenius Method of Slices, both DA1 combinations), calcs/civil/slope_stability.py. Slice geometry is a direct input (not generated from a slope profile/trial circle), and Fellenius is known conservative vs Bishop's Simplified Method -- see that module's docstring.",
+                    standard_reference="BS EN 1997-1",
+                    calc_module_reference="civil_slope_stability_ec7",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Permanent slope angle", value="to be confirmed from ground model", notes="Set per BS 6031 once characteristic ground parameters are available from calcs/geotechnical/."),

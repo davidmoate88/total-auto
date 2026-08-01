@@ -259,6 +259,38 @@ plan, not a user manual.
       formula -- and per the project owner's explicit direction is left
       NOT BUILT, tracked as an open item in this roadmap rather than attempted with
       unverified figures.
+- [x] Sixth civils calc module: `calcs/civil/slope_stability.py` — circular
+      slip surface stability check via Fellenius' (Ordinary) Method of
+      Slices, both DA1 combinations, answering
+      `earthworks_and_remediation`'s "Slope stability check"
+      `CalculationRequirement`. Deliberately Fellenius rather than Bishop's
+      Simplified Method: Bishop's requires solving for the factor
+      implicitly (each slice's normal force depends on it), while Fellenius
+      is closed-form/non-iterative and well-verified here -- but it is
+      KNOWN CONSERVATIVE relative to Bishop's (often overestimating
+      utilisation by up to ~15-20%, especially with significant pore
+      pressure). Every result carries that caveat, plus an extra warning
+      specifically when the governing utilisation lands in the 0.9-1.0
+      band, exactly where Fellenius's bias could flip a real PASS into an
+      apparent FAIL. Reuses `DA1_C1`/`DA1_C2` from `bearing_capacity.py` --
+      the third module this session to share that one implementation
+      (after `lateral_earth_pressure.py` and `retaining_wall_stability.py`).
+      Slice geometry (weight, base angle, base length, pore pressure) is
+      supplied as lenient pasted text, the same pattern as
+      `cut_fill_balance.py` -- this module does NOT generate slices from a
+      slope profile and trial slip circle; that geometry (circle/ground-
+      surface intersection, per-slice depth and base angle) is a
+      substantial computational-geometry problem kept deliberately out of
+      scope, the same reasoning that kept `retaining_wall_stability.py`'s
+      self-weight and `base_plate.py`'s effective area as direct inputs
+      rather than derived. 12 new tests, verified against an independently
+      hand-derived 3-slice worked example (both DA1 combinations). Verified
+      end-to-end in a real browser -- UI result (0.6998) matched the CLI
+      run (0.6997, rounding) exactly. 227/227 tests passing. This completes
+      all `calculations_required` entries in `earthworks_and_remediation`
+      and `retaining_structures` -- civils now has working calcs for every
+      section except surface water/SuDS's attenuation volume sizing (open
+      item above) and highways/pavement (not yet scoped with any calc).
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -398,14 +430,14 @@ mechanical piping**.
       Code per the project owner's direction. **In progress**: structural has
       five modules built and wired (`beam_capacity.py`, `column_capacity.py`,
       `bolted_shear_connection.py`, `base_plate.py`, `deck_grating.py`), and
-      civils has its first five (`lateral_earth_pressure.py`,
+      civils has its first six (`lateral_earth_pressure.py`,
       `retaining_wall_stability.py`, `foul_drainage.py`,
-      `cut_fill_balance.py`, `surface_water_discharge.py`) -- see Milestone 1
-      above for all.
+      `cut_fill_balance.py`, `surface_water_discharge.py`,
+      `slope_stability.py`) -- see Milestone 1 above for all.
       Remaining: the beam-column combined bending+axial interaction, block
       tearing, base plate bending, civils attenuation volume sizing (open
-      open item -- needs the FSR/FEH rainfall model)/slope-stability/
-      highways calcs, and all calcs for electrical_lv/electrical_hv/
+      item above -- needs the FSR/FEH rainfall model) and highways/pavement
+      calcs, and all calcs for electrical_lv/electrical_hv/
       mechanical_piping. Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current
