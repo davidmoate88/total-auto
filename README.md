@@ -241,12 +241,32 @@ feed directly into `cable_sizing_voltage_drop.py`'s `design_current_a` (Ib)
 for the main incoming/distribution cable — the first calc-to-calc handoff
 within a single discipline in this repo.
 
+**Third electrical (LV) module**: `calcs/electrical_lv/earth_fault_loop_impedance.py`
+— answers `earthing_and_bonding`'s "Earth fault loop impedance calculation"
+requirement (BS 7671 Chapter 41, automatic disconnection of supply):
+`Zs = Ze + (R1+R2)*temperature_correction_factor`, checked against the
+maximum permitted Zs for the protective device/disconnection time. Same
+"flag, don't guess" pattern as the first module: BS 7671's maximum-Zs tables
+(41.2–41.5) are device-curve-specific, and conductor resistance-per-length
+figures (Appendix 14/Table I1) are size-specific, so both are required
+direct inputs rather than embedded. The one constant this module DOES apply
+by default is the 1.20 temperature correction factor BS 7671 Appendix 14
+commonly cites (20°C tabulated/measured resistance → normal operating
+temperature) — a single well-established conversion, not a proprietary
+table lookup, so it ships as an overridable default rather than a required
+input, unlike It/mV/A/m/max Zs. A failed Zs check raises a `safety` risk
+flag (not `code_compliance`, unlike every other failed-utilisation flag in
+`calcs/electrical_lv/` and `calcs/civil/` so far) — an excessive Zs means
+the protective device may not disconnect a fault fast enough, a direct
+shock-risk consequence rather than a documentation/procedural one, matching
+how `beam_capacity.py` already uses the same category for a structural
+overstress.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, the beam-column interaction check, highways/pavement
-civils calcs, motor starting/earth fault loop impedance/arc flash for
-electrical LV, HV electrical calcs, mechanical piping calcs) plus
-independent verification of every illustrative value flagged throughout the
-detail passes.
+civils calcs, motor starting/arc flash for electrical LV, HV electrical
+calcs, mechanical piping calcs) plus independent verification of every
+illustrative value flagged throughout the detail passes.
 
 ## Getting started
 
@@ -273,6 +293,7 @@ python3 -m calcs.civil.surface_water_discharge
 python3 -m calcs.civil.slope_stability
 python3 -m calcs.electrical_lv.cable_sizing_voltage_drop
 python3 -m calcs.electrical_lv.load_schedule_diversity
+python3 -m calcs.electrical_lv.earth_fault_loop_impedance
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -318,15 +339,16 @@ total-auto/
 │   │   ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
 │   │   ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
 │   │   └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
-│   └── electrical_lv/                # TWO MODULES BUILT — see below
-│       ├── cable_sizing_voltage_drop.py  # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
-│       └── load_schedule_diversity.py    # P/Q load aggregation -> maximum demand current
+│   └── electrical_lv/                # THREE MODULES BUILT — see below
+│       ├── cable_sizing_voltage_drop.py    # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
+│       ├── load_schedule_diversity.py      # P/Q load aggregation -> maximum demand current
+│       └── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
-│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; two calcs wired (cable sizing/voltage drop, load schedule/diversity)
+│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; three calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance)
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
@@ -353,6 +375,7 @@ total-auto/
 │   ├── test_slope_stability.py     # Validates Fellenius method arithmetic and paste parsing
 │   ├── test_cable_sizing_voltage_drop.py  # Validates BS 7671 Reg 433.1.1 conditions and voltage drop arithmetic
 │   ├── test_load_schedule_diversity.py    # Validates P/Q load aggregation and paste parsing
+│   ├── test_earth_fault_loop_impedance.py # Validates Zs = Ze+(R1+R2)*factor arithmetic and utilisation check
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

@@ -22,9 +22,10 @@ criteria, assumptions, exclusions, and deliverables are now populated per
 section. Calculation logic itself (the corresponding `calcs/electrical_lv/`
 modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
-module exists (see calcs/electrical_lv/cable_sizing_voltage_drop.py and
-calcs/electrical_lv/load_schedule_diversity.py for the first two); the rest
-remain unset until built.
+module exists (see calcs/electrical_lv/cable_sizing_voltage_drop.py,
+calcs/electrical_lv/load_schedule_diversity.py, and
+calcs/electrical_lv/earth_fault_loop_impedance.py for the first three); the
+rest remain unset until built.
 """
 
 from __future__ import annotations
@@ -156,6 +157,14 @@ def build_electrical_lv_bod_skeleton(project_reference: Optional[str] = None) ->
             interfaces=[
                 Interface(with_discipline="structural", description="Structural steelwork bonding."),
                 Interface(with_discipline="geotechnical", description="Soil resistivity affects earth electrode design — see calcs/geotechnical/."),
+            ],
+            calculations_required=[
+                CalculationRequirement(
+                    name="Earth fault loop impedance calculation",
+                    description="Zs = Ze + (R1+R2)*temperature_correction_factor, checked against the maximum permitted Zs for the protective device/disconnection time, calcs/electrical_lv/earth_fault_loop_impedance.py. Max Zs and conductor resistance-per-length are direct inputs -- see that module's docstring.",
+                    standard_reference="BS 7671",
+                    calc_module_reference="electrical_lv_earth_fault_loop_impedance",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Maximum earth fault loop impedance", value="per BS 7671 Table 41.3", notes="Value depends on protective device type/rating and required disconnection time (0.4s or 5s) — set per final circuit, not a single project-wide figure."),

@@ -341,6 +341,30 @@ plan, not a user manual.
       and both three-phase/single-phase maximum demand current) and
       end-to-end in a real browser -- UI result (37.54A) matched the CLI
       run exactly. 251/251 tests passing.
+- [x] Third electrical (LV) calc module:
+      `calcs/electrical_lv/earth_fault_loop_impedance.py` -- BS 7671
+      Chapter 41 automatic disconnection of supply check:
+      `Zs = Ze + (R1+R2)*temperature_correction_factor`, checked against the
+      maximum permitted Zs for the protective device's disconnection time,
+      answering `earthing_and_bonding`'s "Earth fault loop impedance
+      calculation" `CalculationRequirement` and its "Maximum earth fault
+      loop impedance" `DesignCriterion` (previously criteria-only, no
+      calc). Same "flag, don't guess" reasoning as the cable sizing module:
+      the maximum-Zs tables (41.2-41.5) are device-curve-specific and the
+      conductor resistance-per-length figures (Appendix 14/Table I1) are
+      size-specific, so `max_zs_ohms` and both resistance-per-km inputs are
+      required direct inputs. The one constant applied by default is the
+      1.20 temperature correction factor BS 7671 Appendix 14 commonly cites
+      (20C tabulated/measured resistance -> normal operating temperature)
+      -- a single well-established conversion, not a proprietary table
+      lookup, so it ships as an overridable default. A failed check raises
+      a `safety` risk flag (not `code_compliance`) -- excessive Zs means the
+      protective device may not disconnect a fault within the required
+      time, a direct shock-risk consequence, matching how `beam_capacity.py`
+      already uses that category for a structural overstress. 10 new tests,
+      verified against a hand calculation (utilisation 0.4983, PASS) and
+      end-to-end in a real browser -- UI result matched the CLI run
+      exactly. 261/261 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -483,21 +507,23 @@ mechanical piping**.
       civils has its first six (`lateral_earth_pressure.py`,
       `retaining_wall_stability.py`, `foul_drainage.py`,
       `cut_fill_balance.py`, `surface_water_discharge.py`,
-      `slope_stability.py`), and electrical_lv has its first two
+      `slope_stability.py`), and electrical_lv has its first three
       (`cable_sizing_voltage_drop.py`, BS 7671 Reg 433.1.1 current-carrying
       capacity check + Appendix 4 voltage drop check -- tabulated current
       rating and mV/A/m are required direct inputs, not derived, since BS
       7671's cable tables are installation-method-specific and amendment-
-      revised; and `load_schedule_diversity.py`, P/Q real+reactive power
-      load aggregation to a maximum demand current, feeding its result
-      straight into the first module's `design_current_a`) -- see
-      Milestone 1 above for all.
+      revised; `load_schedule_diversity.py`, P/Q real+reactive power load
+      aggregation to a maximum demand current, feeding its result straight
+      into the first module's `design_current_a`; and
+      `earth_fault_loop_impedance.py`, BS 7671 Chapter 41 Zs check against
+      the tabulated maximum for automatic disconnection) -- see Milestone 1
+      above for all.
       Remaining: the beam-column combined bending+axial interaction, block
       tearing, base plate bending, civils attenuation volume sizing (open
       item above -- needs the FSR/FEH rainfall model) and highways/pavement
-      calcs, the rest of electrical_lv (motor starting, earth fault loop
-      impedance, arc flash), and all calcs for electrical_hv/
-      mechanical_piping. Independent verification of every
+      calcs, the rest of electrical_lv (motor starting, arc flash), and all
+      calcs for electrical_hv/mechanical_piping. Independent verification
+      of every
       "illustrative value" flagged throughout the detail passes against
       actual current
       standard texts/project requirements is still outstanding for all
