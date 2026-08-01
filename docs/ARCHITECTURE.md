@@ -12,7 +12,7 @@ pieces are meant to connect once they're all built out.
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | Placeholder — README + pattern only |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks) | Placeholder — README + pattern only |
-| `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV electrical skeletons | **Shared shape + civils + structural + LV electrical built** — HV electrical/mechanical piping BoDs not yet built, same pattern |
+| `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical skeletons | **Shared shape + civils + structural + LV electrical + HV electrical built** — mechanical piping BoD not yet built, same pattern |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
 | `comms/meeting_minutes/` | Transcript → structured minutes → actions | Data model + interface stub (`extract_minutes()` raises `NotImplementedError`) |
 | `comms/email_triage/` | Inbox summarization/prioritisation | Data model + interface stub (`triage_inbox()` raises `NotImplementedError`), gated on a connector |
@@ -83,11 +83,22 @@ backup power, lighting, small power and containment, hazardous area
 classification (ATEX/DSEAR, BS EN 60079 series — confirmed as relevant to this
 portfolio), and arc flash/electrical safety.
 
-For all three, criteria, assumptions, and deliverables are deliberately left
+`electrical_hv.py` is the fourth, covering the incoming supply and step-down
+side that `electrical_lv.py` draws from: design standards and criteria, HV
+incoming supply and connection, substations and switchgear, transformers
+(interfacing directly with LV distribution), protection and control, HV
+cabling, HV earthing and touch/step potential (a distinct section from LV's
+earthing and bonding — governed by BS EN 50522 and ENA EREC S34, since
+substation earthing has its own touch/step potential criteria and the
+combined-vs-separate HV/LV earthing decision is itself safety-critical), and
+arc flash/HV safety. Kept generic across common industrial HV voltage classes
+(6.6kV/11kV/33kV) rather than fixed to one, per project direction.
+
+For all four, criteria, assumptions, and deliverables are deliberately left
 empty — this is architecture, not detail (see docs/examples/ for a generated
 look at each current output shape). Next in this same pattern, in the order
-agreed: **HV electrical**, then **mechanical piping** — each as its own
-`basis_of_design/<discipline>.py` following the same structure.
+agreed: **mechanical piping** — as its own `basis_of_design/mechanical_piping.py`
+following the same structure, the last discipline in the originally agreed order.
 
 ## Design principles
 

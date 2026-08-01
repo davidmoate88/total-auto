@@ -30,13 +30,14 @@ standard and National Annex before use.
 **Milestone 1a (current):** working discipline-by-discipline through a "basis of
 design" (BoD) — the document stating scope, standards, criteria, and interfaces for
 a discipline, distinct from a `calcs/` module that performs one specific calculation.
-Civils, structural, and LV electrical are all built as 9-section skeletons
+Civils, structural, LV electrical, and HV electrical are all built as skeletons
 (`basis_of_design/civils.py`, `structural.py` — scoped to industrial access
-steelwork: platforms, walkways, stairs, ladders, handrails; `electrical_lv.py` —
-scoped to plant/industrial LV distribution including hazardous area classification).
-Each also carries risk flags (`core/risk.py`) wherever a permanent design implies a
-distinct, riskier construction-stage or compliance-sequencing condition. HV electrical
-and mechanical piping are next, in that agreed order. See `docs/examples/` for a
+steelwork; `electrical_lv.py` — plant/industrial LV distribution including
+hazardous area classification; `electrical_hv.py` — incoming supply/substations/
+transformers, kept generic across common HV voltage classes). Each also carries
+risk flags (`core/risk.py`) wherever a permanent design implies a distinct,
+riskier construction-stage or compliance-sequencing condition. Mechanical piping
+is next — the last discipline in the agreed order. See `docs/examples/` for a
 generated look at each discipline's current output.
 
 ## Getting started
@@ -81,7 +82,8 @@ total-auto/
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
-│   └── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution
+│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution
+│   └── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
 ├── portfolio/                       # DATA MODEL ONLY — Project/Portfolio contract, no logic
 ├── comms/
 │   ├── meeting_minutes/             # DATA MODEL + interface stub (extract_minutes())

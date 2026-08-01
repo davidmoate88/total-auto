@@ -76,7 +76,17 @@ mechanical piping**.
       safety. Flags temporary works risk on earthing/bonding (construction-
       phase temporary supplies) and a code_compliance risk on hazardous area
       classification (area classification must precede equipment selection).
-- [ ] HV electrical basis of design skeleton.
+- [x] HV electrical basis of design skeleton — 8 sections: design standards &
+      criteria, HV incoming supply & connection, substations & switchgear,
+      transformers (interfacing with LV distribution), protection & control,
+      HV cabling & cable management, HV earthing & touch/step potential
+      (distinct from LV earthing/bonding — BS EN 50522, ENA EREC S34), and
+      arc flash & HV safety. Kept generic across common industrial HV voltage
+      classes (6.6kV/11kV/33kV) per project direction, rather than fixed to
+      one. Flags temporary works risk on substation cutover/energisation
+      sequencing, and safety risk on the combined-vs-separate HV/LV earthing
+      decision and on HV arc flash needing its own dedicated study (not
+      inherited from an LV assessment).
 - [ ] Mechanical piping basis of design skeleton.
 - [ ] Multi-storey/occupied-building structural elements (floor vibration,
       lateral stability/sway, roof structure, fire engineering) — parked per

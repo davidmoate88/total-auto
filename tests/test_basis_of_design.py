@@ -1,5 +1,6 @@
 from basis_of_design.civils import CIVILS_SECTION_NAMES, build_civils_bod_skeleton
 from basis_of_design.core import BasisOfDesignSection
+from basis_of_design.electrical_hv import ELECTRICAL_HV_SECTION_NAMES, build_electrical_hv_bod_skeleton
 from basis_of_design.electrical_lv import ELECTRICAL_LV_SECTION_NAMES, build_electrical_lv_bod_skeleton
 from basis_of_design.render import render_basis_of_design
 from basis_of_design.structural import STRUCTURAL_SECTION_NAMES, build_structural_bod_skeleton
@@ -140,5 +141,42 @@ def test_electrical_lv_render_includes_project_reference_and_all_section_names()
     bod = build_electrical_lv_bod_skeleton(project_reference="PRJ-003")
     report = render_basis_of_design("LV Electrical", bod.sections(), project_reference=bod.project_reference)
     assert "PRJ-003" in report
+    for section in bod.sections().values():
+        assert section.name in report
+
+
+def test_electrical_hv_skeleton_has_all_eight_sections():
+    bod = build_electrical_hv_bod_skeleton()
+    assert set(bod.sections().keys()) == set(ELECTRICAL_HV_SECTION_NAMES)
+    assert len(bod.sections()) == 8
+
+
+def test_electrical_hv_every_section_has_a_scope_and_at_least_one_standard_or_interface():
+    bod = build_electrical_hv_bod_skeleton()
+    for name, section in bod.sections().items():
+        assert section.scope, f"{name} has no scope description"
+        assert section.standards or section.interfaces, f"{name} has neither standards nor interfaces"
+
+
+def test_electrical_hv_flags_temporary_works_on_substation_cutover():
+    bod = build_electrical_hv_bod_skeleton()
+    assert any(f.category == "temporary_works" for f in bod.substations_and_switchgear.risk_flags)
+
+
+def test_electrical_hv_flags_safety_on_earthing_and_arc_flash():
+    bod = build_electrical_hv_bod_skeleton()
+    assert any(f.category == "safety" and f.severity == "high" for f in bod.hv_earthing_and_touch_step_potential.risk_flags)
+    assert any(f.category == "safety" and f.severity == "high" for f in bod.arc_flash_and_hv_safety.risk_flags)
+
+
+def test_electrical_hv_interfaces_with_lv_via_transformers():
+    bod = build_electrical_hv_bod_skeleton()
+    assert any(i.with_discipline == "electrical_lv" for i in bod.transformers.interfaces)
+
+
+def test_electrical_hv_render_includes_project_reference_and_all_section_names():
+    bod = build_electrical_hv_bod_skeleton(project_reference="PRJ-004")
+    report = render_basis_of_design("HV Electrical", bod.sections(), project_reference=bod.project_reference)
+    assert "PRJ-004" in report
     for section in bod.sections().values():
         assert section.name in report
