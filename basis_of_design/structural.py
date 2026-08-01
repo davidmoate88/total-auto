@@ -183,7 +183,11 @@ def build_structural_bod_skeleton(project_reference: Optional[str] = None) -> St
                     calc_module_reference="structural_column_capacity_ec3",
                     description="Cross-section + flexural buckling resistance, calcs/structural/column_capacity.py. Pure axial only -- combined bending+axial (SS6.3.3) is not covered by either module.",
                 ),
-                CalculationRequirement(name="Connection design", standard_reference="BS EN 1993-1-8"),
+                CalculationRequirement(
+                    name="Connection design", standard_reference="BS EN 1993-1-8",
+                    calc_module_reference="structural_bolted_shear_connection_ec3",
+                    description="Bolt shear/bearing for a concentric group, calcs/structural/bolted_shear_connection.py. Block tearing, plate capacity, and moment/eccentric connections are not covered -- see that module's docstring.",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Vertical deflection limit (platforms)", value="span/200", notes="Typical serviceability limit for industrial access platforms — confirm against project-specific serviceability requirements."),

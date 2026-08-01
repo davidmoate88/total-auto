@@ -71,6 +71,23 @@ plan, not a user manual.
       logic is intentionally NOT shared/copy-pasted, since they classify a
       genuinely different stress condition. Not yet wired into the
       Streamlit UI.
+- [x] Third structural calc module: `calcs/structural/bolted_shear_connection.py`
+      — bolt shear and bearing resistance (EN 1993-1-8 Table 3.4) for a
+      concentrically-loaded bolt group, answering `primary_steel_frame`'s
+      "Connection design" `CalculationRequirement`. Scoped to pure concentric
+      shear only — no moment/eccentricity, no block tearing (SS3.10.2), no
+      connected-ply gross/net section capacity. Notable departure from the
+      other three calc modules' confidence pattern: this author's
+      recollection of Table 3.4's alpha_v (shear resistance factor) by bolt
+      grade and shear-plane location was genuinely inconsistent across
+      attempts to recall it, so rather than embed a guessed lookup table (as
+      done for fy in the beam/column modules, where confidence was high),
+      `shear_resistance_factor_alpha_v` is a REQUIRED direct input with no
+      default — a stricter application of the same "flag, don't guess"
+      principle used throughout this repo, one level further than the
+      default-plus-override pattern used elsewhere. 15 new tests, arithmetic
+      verified by hand against the module's own documented alpha_b/k1
+      formulae. Not yet wired into the Streamlit UI.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -207,12 +224,14 @@ mechanical piping**.
       **This completes the detail pass across all five agreed disciplines.**
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
-      Code per the project owner's direction. **Started**: structural's first
-      module (`beam_capacity.py`, see Milestone 1 above) is built and wired.
-      Remaining: connection design and column/combined-axial checks for
-      structural, and all calcs for civils/electrical_lv/electrical_hv/
-      mechanical_piping. Independent verification of every "illustrative
-      value" flagged throughout the detail passes against actual current
+      Code per the project owner's direction. **In progress**: structural has
+      three modules built and wired (`beam_capacity.py`, `column_capacity.py`,
+      `bolted_shear_connection.py`, see Milestone 1 above).
+      Remaining: the beam-column combined bending+axial interaction, block
+      tearing, base plate/HD bolt design, and all calcs for
+      civils/electrical_lv/electrical_hv/mechanical_piping. Independent
+      verification of every "illustrative value" flagged throughout the
+      detail passes against actual current
       standard texts/project requirements is still outstanding for all
       disciplines.
 
