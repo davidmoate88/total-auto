@@ -82,3 +82,30 @@ def test_structural_render_includes_project_reference_and_all_section_names():
     assert "PRJ-002" in report
     for section in bod.sections().values():
         assert section.name in report
+
+
+def test_civils_flags_temporary_works_risk_on_earthworks_and_retaining_structures():
+    bod = build_civils_bod_skeleton()
+    assert any(f.category == "temporary_works" for f in bod.earthworks_and_remediation.risk_flags)
+    assert any(f.category == "temporary_works" for f in bod.retaining_structures.risk_flags)
+    # Sections with no inherent temporary-works implication shouldn't carry the flag.
+    assert not any(f.category == "temporary_works" for f in bod.flood_risk.risk_flags)
+
+
+def test_structural_flags_temporary_works_and_installation_safety_risk():
+    bod = build_structural_bod_skeleton()
+    assert any(f.category == "temporary_works" for f in bod.primary_steel_frame.risk_flags)
+    assert any(f.category == "temporary_works" for f in bod.substructure_and_foundations.risk_flags)
+    assert any(f.category == "safety" for f in bod.platforms_and_walkways.risk_flags)
+
+
+def test_risk_flags_render_in_civils_and_structural_reports():
+    civils = build_civils_bod_skeleton()
+    structural = build_structural_bod_skeleton()
+    civils_report = render_basis_of_design("Civils", civils.sections())
+    structural_report = render_basis_of_design("Structural", structural.sections())
+    assert "**Risk flags:**" in civils_report
+    assert "**Risk flags:**" in structural_report
+    assert "[HIGH] [temporary_works]" in civils_report
+    assert "[HIGH] [temporary_works]" in structural_report
+    assert "[HIGH] [safety]" in structural_report

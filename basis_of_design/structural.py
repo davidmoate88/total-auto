@@ -30,6 +30,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from basis_of_design.core import BasisOfDesignSection, CalculationRequirement, Interface, Standard
+from core.risk import DesignRiskFlag
 
 STRUCTURAL_SECTION_NAMES = [
     "design_standards_and_criteria",
@@ -101,6 +102,20 @@ def build_structural_bod_skeleton(project_reference: Optional[str] = None) -> St
             calculations_required=[
                 CalculationRequirement(name="Base plate / holding-down bolt design", standard_reference="BS EN 1993-1-8"),
             ],
+            risk_flags=[
+                DesignRiskFlag(
+                    category="temporary_works",
+                    severity="medium",
+                    description=(
+                        "Foundation excavation for platform/walkway supports may require temporary "
+                        "excavation support depending on depth and ground conditions — not assessed "
+                        "by the permanent foundation/base plate design itself."
+                    ),
+                    trigger="Any foundation involves an excavated construction stage distinct from the permanent buried condition.",
+                    recommended_action="Confirm excavation depth against the geotechnical ground model (calcs/geotechnical/) and safe unsupported-excavation guidance; involve a temporary works designer if in doubt.",
+                    source_reference="basis_of_design.structural:substructure_and_foundations",
+                ),
+            ],
         ),
         primary_steel_frame=BasisOfDesignSection(
             name="Primary steel frame",
@@ -113,6 +128,20 @@ def build_structural_bod_skeleton(project_reference: Optional[str] = None) -> St
                 CalculationRequirement(name="Beam/column member capacity checks", standard_reference="BS EN 1993-1-1"),
                 CalculationRequirement(name="Connection design", standard_reference="BS EN 1993-1-8"),
             ],
+            risk_flags=[
+                DesignRiskFlag(
+                    category="temporary_works",
+                    severity="high",
+                    description=(
+                        "The frame design assumes the complete, fully-connected, fully-braced "
+                        "structure — intermediate erection stages (before all bracing/connections "
+                        "are made) are not automatically stable and are a distinct design case."
+                    ),
+                    trigger="Steelwork is erected member-by-member; the design's stability assumptions only hold once erection is complete.",
+                    recommended_action="Temporary works designer/erection contractor to verify stability at each erection stage (see temporary_works section) — do not assume the permanent design covers construction-stage stability.",
+                    source_reference="basis_of_design.structural:primary_steel_frame",
+                ),
+            ],
         ),
         platforms_and_walkways=BasisOfDesignSection(
             name="Platforms and walkways",
@@ -124,6 +153,20 @@ def build_structural_bod_skeleton(project_reference: Optional[str] = None) -> St
             ],
             calculations_required=[
                 CalculationRequirement(name="Deck/grating loading and deflection check", standard_reference="BS EN 1991-1-1"),
+            ],
+            risk_flags=[
+                DesignRiskFlag(
+                    category="safety",
+                    severity="high",
+                    description=(
+                        "Working at height before permanent fall protection (handrails/guard-rails) is "
+                        "installed is a distinct installation-sequence safety risk, separate from the "
+                        "completed platform's design."
+                    ),
+                    trigger="Decking/grating is typically installed before its permanent guard-rails are fitted.",
+                    recommended_action="Define temporary edge protection or fall-arrest requirements for the installation sequence, coordinated with the handrails_and_guardrails section.",
+                    source_reference="basis_of_design.structural:platforms_and_walkways",
+                ),
             ],
         ),
         stairs_and_ladders=BasisOfDesignSection(

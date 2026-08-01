@@ -18,6 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from core.risk import DesignRiskFlag
+
 
 @dataclass
 class Term:
@@ -43,13 +45,18 @@ class CalcResult:
     `headline` is the single most important output (e.g. allowable bearing
     capacity). `terms` holds every intermediate value in the order they were
     derived, so the full working can be reconstructed by a reviewer. `warnings`
-    surfaces anything the calculation wants to flag (out-of-range inputs, an
-    assumption that was applied, etc.) without stopping execution.
+    surfaces anything the calculation wants to flag as free text (out-of-range
+    inputs, an assumption that was applied, etc.) without stopping execution.
+    `risk_flags` is the structured equivalent (see core/risk.py) — use it for
+    anything a reviewer should be able to filter/prioritise by severity or
+    category (e.g. a failed utilisation check, or a design that implies
+    temporary works), rather than burying it in a plain string.
     """
 
     headline: Term
     terms: list[Term] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    risk_flags: list[DesignRiskFlag] = field(default_factory=list)
     method: str = ""
     references: list[str] = field(default_factory=list)
 

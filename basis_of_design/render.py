@@ -54,6 +54,14 @@ def render_basis_of_design(discipline_name: str, sections: dict[str, BasisOfDesi
                 lines.append(f"- {a.description}{note}")
             lines.append("")
 
+        if section.risk_flags:
+            lines.append("**Risk flags:**\n")
+            for r in sorted(section.risk_flags, key=lambda f: ["low", "medium", "high", "critical"].index(f.severity), reverse=True):
+                trigger = f" (trigger: {r.trigger})" if r.trigger else ""
+                action = f" — recommended action: {r.recommended_action}" if r.recommended_action else ""
+                lines.append(f"- **[{r.severity.upper()}] [{r.category}]** {r.description}{trigger}{action}")
+            lines.append("")
+
         if section.exclusions:
             lines.append("**Exclusions:**\n")
             for e in section.exclusions:

@@ -25,6 +25,10 @@ Foundations and base connections (base plates, holding-down bolts) supporting pl
 - BS EN 1997-1 (UK NA) _Shared with the geotechnical module._
 - BS EN 1993-1-8 (UK NA) — Design of joints — base plate/holding-down bolt design.
 
+**Risk flags:**
+
+- **[MEDIUM] [temporary_works]** Foundation excavation for platform/walkway supports may require temporary excavation support depending on depth and ground conditions — not assessed by the permanent foundation/base plate design itself. (trigger: Any foundation involves an excavated construction stage distinct from the permanent buried condition.) — recommended action: Confirm excavation depth against the geotechnical ground model (calcs/geotechnical/) and safe unsupported-excavation guidance; involve a temporary works designer if in doubt.
+
 **Interfaces:**
 
 - **geotechnical**: Bearing resistance for platform/walkway support foundations — see calcs/geotechnical/.
@@ -42,6 +46,10 @@ Supporting steelwork (beams, columns, bracing) for platforms and walkways.
 - BS EN 1993-1-1 (UK NA) — General rules and rules for buildings
 - BS EN 1993-1-8 (UK NA) — Design of joints
 
+**Risk flags:**
+
+- **[HIGH] [temporary_works]** The frame design assumes the complete, fully-connected, fully-braced structure — intermediate erection stages (before all bracing/connections are made) are not automatically stable and are a distinct design case. (trigger: Steelwork is erected member-by-member; the design's stability assumptions only hold once erection is complete.) — recommended action: Temporary works designer/erection contractor to verify stability at each erection stage (see temporary_works section) — do not assume the permanent design covers construction-stage stability.
+
 **Calculations required:**
 
 - Beam/column member capacity checks — to BS EN 1993-1-1 (not yet built)
@@ -56,6 +64,10 @@ Decking/flooring specification and loading for working platforms and walkways.
 - BS EN ISO 14122-2 — Safety of machinery — permanent means of access — working platforms and walkways
 - BS EN 1991-1-1 (UK NA) _Imposed load requirements for platforms/walkways._
 - BS 4592 _Industrial type flooring, walkways and stair treads (grating/chequer plate specification) — confirm current part/edition._
+
+**Risk flags:**
+
+- **[HIGH] [safety]** Working at height before permanent fall protection (handrails/guard-rails) is installed is a distinct installation-sequence safety risk, separate from the completed platform's design. (trigger: Decking/grating is typically installed before its permanent guard-rails are fitted.) — recommended action: Define temporary edge protection or fall-arrest requirements for the installation sequence, coordinated with the handrails_and_guardrails section.
 
 **Calculations required:**
 

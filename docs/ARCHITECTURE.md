@@ -16,7 +16,35 @@ pieces are meant to connect once they're all built out.
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
 | `comms/meeting_minutes/` | Transcript → structured minutes → actions | Data model + interface stub (`extract_minutes()` raises `NotImplementedError`) |
 | `comms/email_triage/` | Inbox summarization/prioritisation | Data model + interface stub (`triage_inbox()` raises `NotImplementedError`), gated on a connector |
-| `core/` | Shared calc framework (input/result models, registry, report generator) | Built, used by `calcs/geotechnical/` |
+| `core/` | Shared calc framework (input/result models, registry, report generator, risk flagging) | Built, used by `calcs/geotechnical/` |
+
+## Risk flagging (`core/risk.py`)
+
+A shared `DesignRiskFlag` shape (category, severity, description, trigger,
+recommended action) is used by both `calcs/` modules (`CalcResult.risk_flags`)
+and `basis_of_design/` sections (`BasisOfDesignSection.risk_flags`) — one
+mechanism, not a bespoke one per domain. It's distinct from
+`portfolio.models.Risk`: a `DesignRiskFlag` is raised automatically at the
+point a calculation or BoD section is generated (an "a person should look at
+this" signal); a `Risk` is a project-level register entry a person tracks
+over time. The intended (not yet wired up) workflow is that flags get
+reviewed and the ones that matter get promoted into a project's `Risk`
+register — the same pattern as `BuildabilityNote.related_calc_reference`.
+
+`temporary_works` is a first-class category rather than folded into "other",
+because it's a specific, recurring failure mode worth naming: a design gets
+fully worked up for its permanent, completed condition, and the
+construction-stage condition — often more onerous (an unpropped excavation, a
+retaining wall before its permanent props are in, steelwork before its
+bracing is complete, working at height before guard-rails are fitted) — never
+gets a second look unless something forces it. Both `civils.py` (earthworks,
+retaining structures) and `structural.py` (substructure excavation, primary
+frame erection, platform installation sequence) now flag this explicitly
+where it applies; `calcs/geotechnical/bearing_capacity.py` also raises a
+`temporary_works` flag for its own founding-depth excavation, and a
+`code_compliance` flag when the governing DA1 combination fails its
+utilisation check — proving the mechanism works for an actual calculation,
+not just BoD skeletons.
 
 ## Basis of design (`basis_of_design/`)
 

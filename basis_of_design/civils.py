@@ -27,6 +27,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from basis_of_design.core import BasisOfDesignSection, CalculationRequirement, Interface, Standard
+from core.risk import DesignRiskFlag
 
 CIVILS_SECTION_NAMES = [
     "site_and_existing_conditions",
@@ -90,6 +91,21 @@ def build_civils_bod_skeleton(project_reference: Optional[str] = None) -> Civils
             calculations_required=[
                 CalculationRequirement(name="Cut/fill balance", description="Earthwork volumes across the site."),
                 CalculationRequirement(name="Slope stability check", standard_reference="BS EN 1997-1"),
+            ],
+            risk_flags=[
+                DesignRiskFlag(
+                    category="temporary_works",
+                    severity="high",
+                    description=(
+                        "Temporary excavation slopes and any temporary retaining/support during "
+                        "earthworks are a separate design case from the permanent condition — the "
+                        "permanent cut/fill and slope stability design does not itself validate that "
+                        "the construction-stage excavation is safe."
+                    ),
+                    trigger="Any earthworks section by nature involves a temporary excavated condition before the permanent profile/remediation is complete.",
+                    recommended_action="Temporary works designer/contractor to assess temporary slope stability per BS 6031 against actual ground conditions and construction sequence.",
+                    source_reference="basis_of_design.civils:earthworks_and_remediation",
+                ),
             ],
         ),
         foul_drainage=BasisOfDesignSection(
@@ -176,6 +192,21 @@ def build_civils_bod_skeleton(project_reference: Optional[str] = None) -> Civils
             calculations_required=[
                 CalculationRequirement(name="Lateral earth pressure calculation", standard_reference="BS EN 1997-1"),
                 CalculationRequirement(name="Retaining wall stability (sliding/overturning/bearing)", standard_reference="BS EN 1997-1"),
+            ],
+            risk_flags=[
+                DesignRiskFlag(
+                    category="temporary_works",
+                    severity="high",
+                    description=(
+                        "Retaining structures very commonly require a staged/propped temporary "
+                        "condition before the permanent structure (permanent props, slab, or anchors) "
+                        "is complete — that temporary condition can be more critical than the "
+                        "permanent one, and is easy to overlook if only the finished structure is designed."
+                    ),
+                    trigger="Retaining wall design typically assumes the completed, fully-propped/anchored condition; intermediate construction stages carry different (often more severe) loading.",
+                    recommended_action="Temporary works designer to verify stability at every construction stage, not just the permanent completed condition.",
+                    source_reference="basis_of_design.civils:retaining_structures",
+                ),
             ],
         ),
     )

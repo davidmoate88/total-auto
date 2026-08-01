@@ -19,6 +19,10 @@ Cut/fill balance, temporary and permanent slope stability, and any ground remedi
 - BS EN 1997-1 (UK NA) _Shared with the geotechnical module — slope stability and retaining checks._
 - CIRIA C552 _Contaminated land risk assessment / remediation guidance — confirm current CIRIA reference._
 
+**Risk flags:**
+
+- **[HIGH] [temporary_works]** Temporary excavation slopes and any temporary retaining/support during earthworks are a separate design case from the permanent condition — the permanent cut/fill and slope stability design does not itself validate that the construction-stage excavation is safe. (trigger: Any earthworks section by nature involves a temporary excavated condition before the permanent profile/remediation is complete.) — recommended action: Temporary works designer/contractor to assess temporary slope stability per BS 6031 against actual ground conditions and construction sequence.
+
 **Interfaces:**
 
 - **geotechnical**: Ground model (strata, water table) drives cut/fill and slope stability checks — see calcs/geotechnical/.
@@ -118,6 +122,10 @@ Design of retaining walls/structures — sits on the civils/structural/geotechni
 - BS EN 1997-1 (UK NA) _Shared with the geotechnical module._
 - CIRIA C760 _Embedded retaining wall design guidance — confirm current CIRIA reference/edition._
 - BS EN 1992-1-1 (UK NA) _If reinforced concrete — structural interface._
+
+**Risk flags:**
+
+- **[HIGH] [temporary_works]** Retaining structures very commonly require a staged/propped temporary condition before the permanent structure (permanent props, slab, or anchors) is complete — that temporary condition can be more critical than the permanent one, and is easy to overlook if only the finished structure is designed. (trigger: Retaining wall design typically assumes the completed, fully-propped/anchored condition; intermediate construction stages carry different (often more severe) loading.) — recommended action: Temporary works designer to verify stability at every construction stage, not just the permanent completed condition.
 
 **Interfaces:**
 

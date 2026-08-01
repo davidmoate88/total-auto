@@ -61,7 +61,8 @@ total-auto/
 ├── app.py                          # Streamlit UI — ground model interpreter + bearing calc
 ├── core/
 │   ├── calc_base.py                # Shared interfaces: CalcInput, CalcResult, registry
-│   └── report.py                   # Turns a CalcResult into a review-ready markdown sheet
+│   ├── report.py                   # Turns a CalcResult into a review-ready markdown sheet
+│   └── risk.py                     # DesignRiskFlag — shared risk-flagging shape (calcs + BoDs)
 ├── calcs/
 │   ├── registry.py                 # Central list of registered calc modules
 │   ├── geotechnical/                # BUILT — see below

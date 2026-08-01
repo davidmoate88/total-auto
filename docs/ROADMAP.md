@@ -32,6 +32,12 @@ as efficient as possible.
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
       and UK National Annex — flagged as an open item in the module's own docstring.
+- [x] Shared risk-flagging mechanism (`core/risk.py`'s `DesignRiskFlag`), wired into
+      both `CalcResult` and `BasisOfDesignSection`, with a first-class
+      `temporary_works` category. Retrofitted into `bearing_capacity.py` (founding
+      depth -> temporary_works flag; failed utilisation -> critical code_compliance
+      flag) and into the civils/structural BoD skeletons wherever a permanent design
+      genuinely implies a distinct, riskier construction-stage condition.
 
 ## Milestone 1a — Discipline basis of design (in progress)
 
@@ -121,3 +127,9 @@ mechanical piping**.
   known standards/interfaces) before any section gets criteria/assumptions/deliverable
   detail filled in. This was an explicit project-owner decision, not a shortcut —
   the detail pass is intentionally deferred to a later, separate piece of work.
+- **One risk-flagging mechanism, shared across calcs and BoDs**: `core/risk.py`'s
+  `DesignRiskFlag` is used identically by `CalcResult.risk_flags` and
+  `BasisOfDesignSection.risk_flags`, rather than each domain inventing its own
+  ad-hoc "warnings" shape. `temporary_works` is a named category specifically
+  because a design's permanent-condition analysis routinely doesn't cover its
+  (often more critical) construction-stage condition — see docs/ARCHITECTURE.md.

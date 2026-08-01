@@ -60,6 +60,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, model_validator
 
 from core.calc_base import CalcModule, CalcResult, Term
+from core.risk import DesignRiskFlag
 
 WATER_UNIT_WEIGHT_KN_M3 = 9.81
 
@@ -302,10 +303,27 @@ def calculate(inputs: BearingResistanceInput) -> CalcResult:
         "footing base assumed unless base_inclination_deg is set. Horizontal load assumed to act "
         "parallel to the B direction. Settlement (SLS) is not checked — ULS bearing resistance only.",
     ]
+    risk_flags: list[DesignRiskFlag] = []
     if inputs.depth_m > inputs.width_m:
         warnings.append(
             f"Depth D ({inputs.depth_m} m) exceeds width B ({inputs.width_m} m) — shallow "
             "foundation assumptions become less reliable for deep/pile-like foundations."
+        )
+    if inputs.depth_m >= 1.0:
+        risk_flags.append(
+            DesignRiskFlag(
+                category="temporary_works",
+                severity="medium",
+                description=(
+                    f"Founding depth D={inputs.depth_m} m implies an excavation this calc does not "
+                    "itself assess for temporary stability — this permanent-condition bearing "
+                    "resistance result says nothing about whether the excavation needs temporary "
+                    "support (battering, trench boxes, sheet piling etc.) to be safely dug."
+                ),
+                trigger=f"depth_m ({inputs.depth_m} m) at or beyond a depth where unsupported excavation sides commonly become unsafe, depending on ground conditions.",
+                recommended_action="Check excavation depth/ground conditions against safe unsupported-excavation guidance; involve a temporary works designer if in doubt.",
+                source_reference="geotech_bearing_resistance_ec7",
+            )
         )
 
     Rd_c1, values_c1, warn_c1, terms_c1 = _compute_combination(inputs, DA1_C1)
@@ -341,6 +359,19 @@ def calculate(inputs: BearingResistanceInput) -> CalcResult:
                 f"Governing combination ({governing_label}) FAILS: design vertical action exceeds "
                 "design bearing resistance. Increase footing size or review loads/ground parameters."
             )
+            risk_flags.append(
+                DesignRiskFlag(
+                    category="code_compliance",
+                    severity="critical",
+                    description=(
+                        f"Governing combination ({governing_label}) fails the ULS bearing resistance "
+                        f"check: utilisation = {utilisation:.2f} (must be <= 1.0)."
+                    ),
+                    trigger=f"Vd/({A_eff_governing:.3g} m^2 * Rd) = {utilisation:.2f}",
+                    recommended_action="Increase footing size, reduce design loads, or review ground parameters before proceeding.",
+                    source_reference="geotech_bearing_resistance_ec7",
+                )
+            )
 
     headline = Term(
         f"Design bearing resistance Rd ({governing_label} governs)",
@@ -353,6 +384,7 @@ def calculate(inputs: BearingResistanceInput) -> CalcResult:
         headline=headline,
         terms=terms,
         warnings=warnings,
+        risk_flags=risk_flags,
         method="EN 1997-1 Annex D bearing resistance, UK NA Design Approach 1 (DA1-C1 & DA1-C2)",
         references=[
             "BS EN 1997-1:2004+A1:2013, Eurocode 7: Geotechnical design — Part 1: General rules, Annex D.",

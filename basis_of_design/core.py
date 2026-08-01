@@ -32,6 +32,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from core.risk import DesignRiskFlag
+
 
 class Standard(BaseModel):
     code: str = Field(..., description="e.g. 'BS EN 1997-1', 'CIRIA C753'.")
@@ -84,8 +86,13 @@ class BasisOfDesignSection(BaseModel):
     interfaces: list[Interface] = Field(default_factory=list)
     calculations_required: list[CalculationRequirement] = Field(default_factory=list)
     deliverables: list[Deliverable] = Field(default_factory=list)
+    risk_flags: list[DesignRiskFlag] = Field(
+        default_factory=list,
+        description="Structured risk flags for this section (see core/risk.py) — e.g. where this "
+        "element's permanent design implies a distinct, riskier temporary/construction-stage condition.",
+    )
 
     def is_populated(self) -> bool:
         """True once any content beyond the bare scope/name has been added — used to
         distinguish a still-skeleton section from one that's actually been worked up."""
-        return any([self.standards, self.criteria, self.assumptions, self.exclusions, self.interfaces, self.calculations_required, self.deliverables])
+        return any([self.standards, self.criteria, self.assumptions, self.exclusions, self.interfaces, self.calculations_required, self.deliverables, self.risk_flags])

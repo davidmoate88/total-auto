@@ -51,6 +51,15 @@ def render_report(
     lines.append(f"**{result.headline.formatted(precision=4)}**")
     lines.append("")
 
+    if result.risk_flags:
+        lines.append("## Risk flags")
+        lines.append("")
+        for r in sorted(result.risk_flags, key=lambda f: ["low", "medium", "high", "critical"].index(f.severity), reverse=True):
+            trigger = f" (trigger: {r.trigger})" if r.trigger else ""
+            action = f" — recommended action: {r.recommended_action}" if r.recommended_action else ""
+            lines.append(f"- **[{r.severity.upper()}] [{r.category}]** {r.description}{trigger}{action}")
+        lines.append("")
+
     if result.warnings:
         lines.append("## Warnings")
         lines.append("")

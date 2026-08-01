@@ -186,3 +186,27 @@ def test_eccentricity_reduces_effective_area_and_resistance_side_effects():
     # B_eff isn't directly exposed as a Term, but Rd should differ once
     # eccentricity changes B' and therefore shape factors / the gamma term.
     assert no_ecc.headline.value != with_ecc.headline.value
+
+
+def test_deep_founding_depth_raises_temporary_works_risk_flag():
+    shallow = calculate(BearingResistanceInput(
+        analysis_type="drained", cohesion_c_prime_kpa=0, friction_angle_phi_prime_deg=30,
+        unit_weight_kn_m3=18, width_m=1.5, length_m=1.5, depth_m=0.5,
+    ))
+    deep = calculate(BearingResistanceInput(
+        analysis_type="drained", cohesion_c_prime_kpa=0, friction_angle_phi_prime_deg=30,
+        unit_weight_kn_m3=18, width_m=1.5, length_m=1.5, depth_m=1.0,
+    ))
+    assert not any(f.category == "temporary_works" for f in shallow.risk_flags)
+    assert any(f.category == "temporary_works" and f.severity == "medium" for f in deep.risk_flags)
+
+
+def test_failed_utilisation_raises_critical_code_compliance_risk_flag():
+    base = dict(
+        analysis_type="drained", cohesion_c_prime_kpa=0, friction_angle_phi_prime_deg=30,
+        unit_weight_kn_m3=18, width_m=1.5, length_m=1.5, depth_m=1.0,
+    )
+    light = calculate(BearingResistanceInput(**base, characteristic_permanent_load_kn=50, characteristic_variable_load_kn=20))
+    heavy = calculate(BearingResistanceInput(**base, characteristic_permanent_load_kn=2000, characteristic_variable_load_kn=800))
+    assert not any(f.category == "code_compliance" for f in light.risk_flags)
+    assert any(f.category == "code_compliance" and f.severity == "critical" for f in heavy.risk_flags)
