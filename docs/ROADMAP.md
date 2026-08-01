@@ -9,11 +9,29 @@ as efficient as possible.
 
 - [x] Core framework: calc input/result models, registry pattern, markdown report
       generator.
-- [x] First module: geotechnical shallow foundation bearing capacity (Meyerhof).
+- [x] First module: geotechnical spread foundation bearing resistance, reworked to
+      EN 1997-1 (Eurocode 7) Annex D with UK NA Design Approach 1 (originally built
+      as a classic Meyerhof/global-factor-of-safety calc, then superseded — **all
+      calcs in this repo are meant to be Eurocode-compliant going forward**).
+- [x] Ground model interpreter: SPT/CPT/lab test data -> characteristic phi'/cu/unit
+      weight per stratum, using established correlations (Peck-Hanson-Thornburn,
+      Liao-Whitman, Stroud, Kulhawy-Mayne) and a simplified "cautious estimate"
+      characteristic-value rule consistent with EN 1997-1 §2.4.5.2. Feeds straight
+      into the bearing resistance calc.
+- [ ] Free-form report-excerpt reading: the current text_input.py is a lenient
+      *structured paste* parser (depth/N-value lines etc.), not an NLP reader of
+      prose report excerpts — genuinely free-text input is better handled by having
+      the excerpt read directly and translated into the paste format, rather than a
+      regex trying to extract numbers from natural language.
 - [ ] Second geotechnical calc (e.g. settlement, or retaining wall) to prove the
-      framework generalises within a discipline.
-- [ ] First structural calc module (e.g. simply-supported beam capacity check).
+      framework generalises within a discipline — also to EC7 (Annex C for
+      retaining structures, etc.).
+- [ ] First structural calc module, to the relevant Eurocode (EN 1992 concrete /
+      EN 1993 steel / EN 1995 timber depending on what's needed first).
 - [ ] PDF export of the review sheet (currently markdown only).
+- [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
+      `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
+      and UK National Annex — flagged as an open item in the module's own docstring.
 
 ## Milestone 2 — Meeting minutes → actions
 
@@ -45,3 +63,14 @@ as efficient as possible.
   to replace later if the project grows into something needing a proper frontend.
 - **Markdown reports first, PDF later**: markdown is enough to prove the "review-ready
   output" pattern; PDF export is a formatting layer on top, not a redesign.
+- **Eurocode compliance is a hard requirement, not a nice-to-have**: every calc module
+  going forward targets the relevant Eurocode part + UK National Annex (confirmed as
+  the governing jurisdiction). Where a formula/factor can't be verified with high
+  confidence against the actual standard text in this environment, that uncertainty
+  is surfaced explicitly (module docstring + result warnings), not hidden — see
+  `bearing_capacity.py` for the pattern (specifically the Ngamma factor caveat).
+- **Ground parameters are "characteristic", partial factors are applied downstream**:
+  the interpretation layer (SPT/CPT/lab -> phi'/cu/unit weight) only ever produces
+  characteristic values; DA1 partial factors are applied inside the bearing
+  resistance calc itself. This keeps the EC7 "characteristic vs design value"
+  separation architecturally explicit rather than muddled together in one function.

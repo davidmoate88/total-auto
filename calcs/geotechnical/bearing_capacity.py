@@ -1,221 +1,397 @@
 """
-Shallow foundation ultimate & allowable bearing capacity — Meyerhof's general
-bearing capacity method.
+Spread foundation bearing resistance — EN 1997-1 (Eurocode 7) Annex D, using the
+UK National Annex's Design Approach 1 (DA1).
 
-Reference: Meyerhof, G.G. (1963); as presented in Das, B.M., "Principles of
-Foundation Engineering" (standard geotechnical engineering textbook formulation).
+*** IMPORTANT — READ BEFORE RELYING ON THIS FOR REAL DESIGN ***
+This module implements the Annex D bearing resistance formulae and UK NA DA1
+partial factors as commonly reproduced in UK geotechnical design references
+(e.g. Bond & Harris, "Decoding Eurocode 7"; ICE/ISE design guidance). It was
+NOT built by reading the purchased BS EN 1997-1 standard text directly (that
+text isn't available to check against here). In particular the Nγ bearing
+capacity factor formula varies between references that are all loosely
+"Eurocode-based" (Annex D vs. Vesic 1973 use different coefficients) — the
+formula used below is flagged at the point of use. A chartered engineer
+should verify every formula and partial factor against the current edition
+of EN 1997-1 Annex D and the UK National Annex (and any relevant National
+Annex amendments) before this is used for a real calculation submitted for
+approval.
 
-    qu = c*Nc*Fcs*Fcd*Fci + q*Nq*Fqs*Fqd*Fqi + 0.5*gamma*B*Ngamma*Fgs*Fgd*Fgi
+Method summary
+--------------
+Design Approach 1 requires checking BOTH combinations and taking the more
+onerous (lower) resulting design bearing resistance:
 
-where q = effective overburden pressure at founding level (gamma * Df).
+    DA1-C1 = A1 "+" M1 "+" R1   (factor the actions; soil parameters unfactored)
+    DA1-C2 = A2 "+" M2 "+" R1   (soil parameters factored/reduced; actions less
+                                  onerous than C1, except R1 = 1.0 for spread
+                                  foundations under UK NA in both combinations)
 
-Scope / limitations (see Warnings in the result, and docs/ROADMAP.md):
-- Assumes a dry / fully drained soil profile — no groundwater table adjustment.
-- Assumes a rigid, shallow strip/rectangular/square footing (Df <= B, roughly).
-- Does not check settlement (serviceability) — bearing capacity (ultimate limit
-  state) only. Settlement is a separate, planned calc module.
+Bearing resistance (drained, Annex D):
+
+    R/A' = c'*Nc*bc*sc*ic + q'*Nq*bq*sq*iq + 0.5*gamma'*B'*Ngamma*bgamma*sgamma*igamma
+
+Bearing resistance (undrained, Annex D):
+
+    R/A' = (pi + 2)*cu*bc*sc*ic + q
+
+Where B', L', A' = B'*L' are the *effective* width/length/area accounting for
+load eccentricity (Meyerhof's effective area method), and b/s/i are base
+inclination, shape, and load inclination factors respectively.
+
+Known simplifications / not implemented (see Warnings in the result):
+- No depth factor — Annex D's bearing resistance formula does not include one
+  (this is a deliberate, well-documented feature of Annex D, not an omission
+  on our part — depth effects above founding level are treated as unreliable
+  unless separately justified).
+- Level ground assumed (no ground/slope inclination factors).
+- Horizontal load is assumed to act parallel to the B' (width) direction only.
+- Water table handled as a single boundary within a single assumed soil unit
+  weight profile above founding level (not a multi-layer profile — see the
+  ground-model interpretation module for multi-layer overburden handling).
+- Settlement (SLS) is not checked — this is a ULS bearing resistance check only.
 """
 
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
 from core.calc_base import CalcModule, CalcResult, Term
 
+WATER_UNIT_WEIGHT_KN_M3 = 9.81
 
-class BearingCapacityInput(BaseModel):
-    cohesion_kpa: float = Field(
-        ..., ge=0, description="Soil cohesion, c (kPa). Use 0 for cohesionless (sand)."
+
+@dataclass(frozen=True)
+class PartialFactorSet:
+    """One DA1 combination's partial factors (UK National Annex to EN 1997-1)."""
+
+    label: str
+    gamma_G: float  # on unfavourable permanent actions (Set A)
+    gamma_Q: float  # on unfavourable variable actions (Set A)
+    gamma_phi: float  # on tan(phi'), Set M
+    gamma_c: float  # on c', Set M
+    gamma_cu: float  # on cu, Set M
+    gamma_R: float = 1.0  # Set R1 — 1.0 for spread foundations, both combinations, UK NA
+
+
+DA1_C1 = PartialFactorSet("DA1-C1 (A1+M1+R1)", gamma_G=1.35, gamma_Q=1.5, gamma_phi=1.0, gamma_c=1.0, gamma_cu=1.0)
+DA1_C2 = PartialFactorSet("DA1-C2 (A2+M2+R1)", gamma_G=1.0, gamma_Q=1.3, gamma_phi=1.25, gamma_c=1.25, gamma_cu=1.4)
+
+
+class BearingResistanceInput(BaseModel):
+    analysis_type: Literal["drained", "undrained"] = Field(
+        ..., description="'drained' uses c'/phi' (effective stress); 'undrained' uses cu (total stress)."
     )
-    friction_angle_deg: float = Field(
-        ..., ge=0, le=45, description="Effective friction angle, phi (degrees)."
+
+    # Drained parameters (characteristic values)
+    cohesion_c_prime_kpa: Optional[float] = Field(
+        None, ge=0, description="Characteristic effective cohesion, c' (kPa). Drained analysis only."
     )
-    unit_weight_kn_m3: float = Field(
-        ..., gt=0, description="Soil unit weight, gamma (kN/m^3)."
+    friction_angle_phi_prime_deg: Optional[float] = Field(
+        None, gt=0, le=45, description="Characteristic effective friction angle, phi' (degrees). Drained analysis only."
     )
+
+    # Undrained parameter (characteristic value)
+    undrained_shear_strength_cu_kpa: Optional[float] = Field(
+        None, gt=0, description="Characteristic undrained shear strength, cu (kPa). Undrained analysis only."
+    )
+
+    unit_weight_kn_m3: float = Field(..., gt=0, description="Characteristic bulk unit weight, gamma (kN/m^3).")
+    water_table_depth_m: Optional[float] = Field(
+        None, ge=0, description="Depth to water table (m bgl). Omit if no water table above founding level."
+    )
+
     width_m: float = Field(..., gt=0, description="Footing width, B (m).")
-    length_m: float = Field(
-        ..., gt=0, description="Footing length, L (m). Use L = B for a square footing."
+    length_m: float = Field(..., gt=0, description="Footing length, L (m). Use L = B for a square footing.")
+    depth_m: float = Field(..., ge=0, description="Founding depth, D (m).")
+
+    eccentricity_b_m: float = Field(0.0, ge=0, description="Load eccentricity in the B direction, eB (m).")
+    eccentricity_l_m: float = Field(0.0, ge=0, description="Load eccentricity in the L direction, eL (m).")
+    base_inclination_deg: float = Field(0.0, ge=0, lt=45, description="Footing base inclination from horizontal, alpha (degrees).")
+
+    characteristic_permanent_load_kn: float = Field(
+        0.0, ge=0, description="Characteristic permanent vertical action, Gk (kN). 0 = resistance-only, no verification."
     )
-    depth_m: float = Field(..., ge=0, description="Founding depth, Df (m).")
-    factor_of_safety: float = Field(
-        3.0, ge=1.0, description="Factor of safety applied to net ultimate bearing capacity."
+    characteristic_variable_load_kn: float = Field(
+        0.0, ge=0, description="Characteristic variable vertical action, Qk (kN)."
     )
-    load_inclination_deg: float = Field(
-        0.0, ge=0, lt=90, description="Load inclination from vertical, beta (degrees)."
+    characteristic_horizontal_load_kn: float = Field(
+        0.0, ge=0, description="Characteristic horizontal action, Hk (kN), assumed parallel to B."
+    )
+    horizontal_load_is_variable: bool = Field(
+        True, description="Classify Hk as a variable action (True, e.g. wind) or permanent (False)."
     )
 
     @model_validator(mode="after")
-    def _check_geometry(self) -> "BearingCapacityInput":
+    def _check_consistency(self) -> "BearingResistanceInput":
         if self.length_m < self.width_m:
-            raise ValueError(
-                "length_m must be >= width_m — by convention B is the shorter side. "
-                "Swap the two values."
-            )
+            raise ValueError("length_m must be >= width_m — by convention B is the shorter side.")
+        if self.analysis_type == "drained":
+            if self.cohesion_c_prime_kpa is None or self.friction_angle_phi_prime_deg is None:
+                raise ValueError("Drained analysis requires cohesion_c_prime_kpa and friction_angle_phi_prime_deg.")
+        else:
+            if self.undrained_shear_strength_cu_kpa is None:
+                raise ValueError("Undrained analysis requires undrained_shear_strength_cu_kpa.")
+        if self.eccentricity_b_m * 2 >= self.width_m:
+            raise ValueError("eccentricity_b_m too large — effective width B' = B - 2*eB would be <= 0.")
+        if self.eccentricity_l_m * 2 >= self.length_m:
+            raise ValueError("eccentricity_l_m too large — effective length L' = L - 2*eL would be <= 0.")
         return self
 
 
 def _bearing_capacity_factors(phi_deg: float) -> tuple[float, float, float]:
-    """Return (Nc, Nq, Ngamma) for the given friction angle, Meyerhof's method."""
-    if phi_deg == 0:
-        return 5.14, 1.0, 0.0
+    """
+    Nc, Nq, Ngamma per EN 1997-1 Annex D.
+
+    Nq, Nc are the standard Prandtl/Reissner closed forms used near-universally
+    across bearing capacity methods. Ngamma = 2*(Nq-1)*tan(phi') is the specific
+    form commonly reproduced for Annex D — NOTE this differs from Vesic's
+    original (1973) Ngamma = 2*(Nq+1)*tan(phi') and from Meyerhof/Hansen forms.
+    Verify against the current EN 1997-1 Annex D text (see module docstring).
+    """
     phi = math.radians(phi_deg)
     Nq = math.exp(math.pi * math.tan(phi)) * math.tan(math.radians(45 + phi_deg / 2)) ** 2
     Nc = (Nq - 1) / math.tan(phi)
-    Ngamma = (Nq - 1) * math.tan(math.radians(1.4 * phi_deg))
+    Ngamma = 2 * (Nq - 1) * math.tan(phi)
     return Nc, Nq, Ngamma
 
 
-def _shape_factors(phi_deg: float, B: float, L: float, Kp: float) -> tuple[float, float, float]:
-    Fcs = 1 + 0.2 * Kp * (B / L)
-    if phi_deg > 10:
-        Fqs = Fgs = 1 + 0.1 * Kp * (B / L)
-    else:
-        Fqs = Fgs = 1.0
-    return Fcs, Fqs, Fgs
+def _effective_overburden_kpa(gamma: float, depth_m: float, water_table_depth_m: Optional[float]) -> float:
+    """Single-layer effective overburden at founding depth, accounting for one water table boundary."""
+    if water_table_depth_m is None or water_table_depth_m >= depth_m:
+        return gamma * depth_m
+    dry_thickness = water_table_depth_m
+    submerged_thickness = depth_m - water_table_depth_m
+    gamma_sub = max(gamma - WATER_UNIT_WEIGHT_KN_M3, 0.0)
+    return gamma * dry_thickness + gamma_sub * submerged_thickness
 
 
-def _depth_factors(phi_deg: float, Df: float, B: float, Kp: float) -> tuple[float, float, float]:
-    Fcd = 1 + 0.2 * math.sqrt(Kp) * (Df / B)
-    if phi_deg > 10:
-        Fqd = Fgd = 1 + 0.1 * math.sqrt(Kp) * (Df / B)
-    else:
-        Fqd = Fgd = 1.0
-    return Fcd, Fqd, Fgd
+def _total_overburden_kpa(gamma: float, depth_m: float) -> float:
+    """Total (unfactored-for-buoyancy) overburden — used as the 'q' term in the undrained formula."""
+    return gamma * depth_m
 
 
-def _inclination_factors(phi_deg: float, beta_deg: float) -> tuple[float, float, float]:
-    Fci = Fqi = (1 - beta_deg / 90) ** 2
-    if phi_deg > 0:
-        Fgi = (1 - beta_deg / phi_deg) ** 2
-    else:
-        Fgi = 0.0 if beta_deg > 0 else 1.0
-    return Fci, Fqi, Fgi
-
-
-def calculate(inputs: BearingCapacityInput) -> CalcResult:
-    c = inputs.cohesion_kpa
-    phi_deg = inputs.friction_angle_deg
-    gamma = inputs.unit_weight_kn_m3
+def _compute_combination(
+    inputs: BearingResistanceInput,
+    factors: PartialFactorSet,
+) -> tuple[float, dict, list[str], list[Term]]:
+    """
+    Run one DA1 combination. Returns (design bearing resistance Rd in kPa,
+    dict of labelled intermediate values for the report, warnings raised).
+    """
+    warnings: list[str] = []
     B = inputs.width_m
     L = inputs.length_m
-    Df = inputs.depth_m
-    FS = inputs.factor_of_safety
-    beta = inputs.load_inclination_deg
+    D = inputs.depth_m
 
+    B_eff = B - 2 * inputs.eccentricity_b_m
+    L_eff = L - 2 * inputs.eccentricity_l_m
+    A_eff = B_eff * L_eff
+    alpha = math.radians(inputs.base_inclination_deg)
+
+    # Design actions for this combination.
+    Vd = factors.gamma_G * inputs.characteristic_permanent_load_kn + factors.gamma_Q * inputs.characteristic_variable_load_kn
+    if inputs.horizontal_load_is_variable:
+        Hd = factors.gamma_Q * inputs.characteristic_horizontal_load_kn
+    else:
+        Hd = factors.gamma_G * inputs.characteristic_horizontal_load_kn
+
+    values: dict[str, float] = {
+        "B_eff": B_eff, "L_eff": L_eff, "A_eff": A_eff, "Vd": Vd, "Hd": Hd,
+    }
+
+    if inputs.analysis_type == "undrained":
+        cu_d = inputs.undrained_shear_strength_cu_kpa / factors.gamma_cu
+        q = _total_overburden_kpa(inputs.unit_weight_kn_m3, D)
+
+        sc = 1 + 0.2 * (B_eff / L_eff)
+        bc = 1 - (2 * alpha) / (math.pi + 2)
+
+        if Vd > 0 and A_eff * cu_d > 0:
+            base = 1 - Hd / (A_eff * cu_d)
+            if base < 0:
+                warnings.append(
+                    "Horizontal action exceeds the assumed sliding/inclination capacity "
+                    "(undrained ic base term went negative) — clipped to 0. This likely means "
+                    "sliding resistance (a separate ULS check, not performed by this module) "
+                    "governs, not bearing resistance."
+                )
+                base = 0.0
+            ic = 0.5 * (1 + math.sqrt(base))
+        else:
+            ic = 1.0
+
+        Rd = (math.pi + 2) * cu_d * bc * sc * ic + q
+
+        values.update({"cu_d": cu_d, "q": q, "sc": sc, "bc": bc, "ic": ic})
+        method_terms = [
+            Term("cu,d (design undrained shear strength)", cu_d, unit="kPa", note=f"cu,k / {factors.gamma_cu}"),
+            Term("q (total overburden at founding level)", q, unit="kPa"),
+            Term("sc (shape factor)", sc, note="1 + 0.2*(B'/L')"),
+            Term("bc (base inclination factor)", bc),
+            Term("ic (load inclination factor)", ic),
+        ]
+    else:
+        phi_k = inputs.friction_angle_phi_prime_deg
+        phi_d_rad = math.atan(math.tan(math.radians(phi_k)) / factors.gamma_phi)
+        phi_d_deg = math.degrees(phi_d_rad)
+        c_d = inputs.cohesion_c_prime_kpa / factors.gamma_c
+
+        Nc, Nq, Ngamma = _bearing_capacity_factors(phi_d_deg)
+        q_prime = _effective_overburden_kpa(inputs.unit_weight_kn_m3, D, inputs.water_table_depth_m)
+
+        sq = 1 + (B_eff / L_eff) * math.sin(phi_d_rad)
+        sgamma = 1 - 0.3 * (B_eff / L_eff)
+        sc = (sq * Nq - 1) / (Nq - 1) if Nq != 1 else 1.0
+
+        bq = bgamma = (1 - alpha * math.tan(phi_d_rad)) ** 2
+        bc = bq - (1 - bq) / (Nc * math.tan(phi_d_rad)) if phi_d_rad != 0 else 1.0
+
+        m = (2 + (B_eff / L_eff)) / (1 + (B_eff / L_eff))
+        denom = Vd + A_eff * c_d / math.tan(phi_d_rad) if phi_d_rad != 0 else Vd
+        if Vd > 0 and denom > 0:
+            base = 1 - Hd / denom
+            if base < 0:
+                warnings.append(
+                    "Horizontal action exceeds the assumed sliding/inclination capacity "
+                    "(drained iq/igamma base term went negative) — clipped to 0. This likely "
+                    "means sliding resistance (a separate ULS check, not performed by this "
+                    "module) governs, not bearing resistance."
+                )
+                base = 0.0
+            iq = base**m
+            igamma = base ** (m + 1)
+            ic = iq - (1 - iq) / (Nc * math.tan(phi_d_rad)) if phi_d_rad != 0 else 1.0
+        else:
+            iq = igamma = ic = 1.0
+
+        term_c = c_d * Nc * bc * sc * ic
+        term_q = q_prime * Nq * bq * sq * iq
+        term_gamma = 0.5 * inputs.unit_weight_kn_m3 * B_eff * Ngamma * bgamma * sgamma * igamma
+        Rd = term_c + term_q + term_gamma
+
+        values.update({
+            "phi_d_deg": phi_d_deg, "c_d": c_d, "Nc": Nc, "Nq": Nq, "Ngamma": Ngamma,
+            "q_prime": q_prime, "sq": sq, "sgamma": sgamma, "sc": sc,
+            "bq": bq, "bgamma": bgamma, "bc": bc, "iq": iq, "igamma": igamma, "ic": ic,
+        })
+        method_terms = [
+            Term("phi'_d (design friction angle)", phi_d_deg, unit="deg", note=f"atan(tan(phi'_k)/{factors.gamma_phi})"),
+            Term("c'_d (design cohesion)", c_d, unit="kPa", note=f"c'_k / {factors.gamma_c}"),
+            Term("Nc, Nq, Ngamma", Nq, note=f"Nc={Nc:.3g}, Nq={Nq:.3g}, Ngamma={Ngamma:.3g}"),
+            Term("q' (effective overburden)", q_prime, unit="kPa"),
+            Term("Shape factors sc/sq/sgamma", sc, note=f"sc={sc:.3g}, sq={sq:.3g}, sgamma={sgamma:.3g}"),
+            Term("Base inclination bc/bq/bgamma", bc, note=f"bc={bc:.3g}, bq={bq:.3g}, bgamma={bgamma:.3g}"),
+            Term("Load inclination ic/iq/igamma", ic, note=f"ic={ic:.3g}, iq={iq:.3g}, igamma={igamma:.3g}"),
+        ]
+
+    values["Rd"] = Rd
+    return Rd, values, warnings, method_terms
+
+
+def calculate(inputs: BearingResistanceInput) -> CalcResult:
     warnings: list[str] = [
-        "Assumes a dry, fully drained soil profile with no groundwater table within "
-        "the zone of influence. If groundwater is present at or above founding level, "
-        "unit weight terms need adjusting for submerged/buoyant conditions — not "
-        "handled by this module.",
-        "Ultimate limit state (bearing capacity) only — settlement (serviceability) "
-        "is not checked here.",
+        "Verify all Annex D formulae and DA1 partial factors used here against the current "
+        "edition of EN 1997-1 Annex D and the UK National Annex before relying on this for a "
+        "real design submission — see the module docstring for specifics (notably the Ngamma "
+        "formula, which varies between 'Eurocode-based' references).",
+        "No depth factor is applied (Annex D does not include one). Level ground and horizontal "
+        "footing base assumed unless base_inclination_deg is set. Horizontal load assumed to act "
+        "parallel to the B direction. Settlement (SLS) is not checked — ULS bearing resistance only.",
     ]
-    if beta > 0 and phi_deg == 0 and beta != 0:
+    if inputs.depth_m > inputs.width_m:
         warnings.append(
-            "Load inclination factor for the gamma term is undefined for phi=0 with "
-            "an inclined load; Fgi has been set to 0 (conservative)."
-        )
-    if Df > B:
-        warnings.append(
-            f"Depth Df ({Df} m) exceeds width B ({B} m) — Meyerhof's shallow foundation "
-            "assumptions become less reliable for deep/pile-like foundations; review "
-            "applicability."
+            f"Depth D ({inputs.depth_m} m) exceeds width B ({inputs.width_m} m) — shallow "
+            "foundation assumptions become less reliable for deep/pile-like foundations."
         )
 
-    Nc, Nq, Ngamma = _bearing_capacity_factors(phi_deg)
-    Kp = math.tan(math.radians(45 + phi_deg / 2)) ** 2
+    Rd_c1, values_c1, warn_c1, terms_c1 = _compute_combination(inputs, DA1_C1)
+    Rd_c2, values_c2, warn_c2, terms_c2 = _compute_combination(inputs, DA1_C2)
+    warnings.extend(warn_c1)
+    warnings.extend(warn_c2)
 
-    Fcs, Fqs, Fgs = _shape_factors(phi_deg, B, L, Kp)
-    Fcd, Fqd, Fgd = _depth_factors(phi_deg, Df, B, Kp)
-    Fci, Fqi, Fgi = _inclination_factors(phi_deg, beta)
+    governing_label = "DA1-C1" if Rd_c1 <= Rd_c2 else "DA1-C2"
+    Rd_governing = min(Rd_c1, Rd_c2)
 
-    q = gamma * Df  # effective overburden at founding level
+    def _prefix(label_terms: list[Term], prefix: str) -> list[Term]:
+        return [Term(f"{prefix} {t.label}", t.value, t.unit, t.note) for t in label_terms]
 
-    term_c = c * Nc * Fcs * Fcd * Fci
-    term_q = q * Nq * Fqs * Fqd * Fqi
-    term_gamma = 0.5 * gamma * B * Ngamma * Fgs * Fgd * Fgi
+    terms: list[Term] = []
+    terms.extend(_prefix(terms_c1, "[DA1-C1, unfactored soil params]"))
+    terms.append(Term("[DA1-C1] Rd", Rd_c1, unit="kPa"))
+    terms.extend(_prefix(terms_c2, "[DA1-C2, factored/reduced soil params]"))
+    terms.append(Term("[DA1-C2] Rd", Rd_c2, unit="kPa"))
 
-    qu = term_c + term_q + term_gamma
-    qnet_u = qu - q
-    qnet_all = qnet_u / FS
-    qall_gross = qnet_all + q
-    Qall = qall_gross * B * L
-
-    terms = [
-        Term("Kp (passive coefficient)", Kp, note="tan^2(45 + phi/2)"),
-        Term("Nc", Nc, note="bearing capacity factor — cohesion term"),
-        Term("Nq", Nq, note="bearing capacity factor — surcharge term"),
-        Term("Ngamma", Ngamma, note="bearing capacity factor — unit weight term (Meyerhof)"),
-        Term("Fcs", Fcs, note="shape factor — cohesion term"),
-        Term("Fqs", Fqs, note="shape factor — surcharge term"),
-        Term("Fgs", Fgs, note="shape factor — unit weight term"),
-        Term("Fcd", Fcd, note="depth factor — cohesion term"),
-        Term("Fqd", Fqd, note="depth factor — surcharge term"),
-        Term("Fgd", Fgd, note="depth factor — unit weight term"),
-        Term("Fci", Fci, note="inclination factor — cohesion term"),
-        Term("Fqi", Fqi, note="inclination factor — surcharge term"),
-        Term("Fgi", Fgi, note="inclination factor — unit weight term"),
-        Term("q", q, unit="kPa", note="effective overburden at founding level (gamma * Df)"),
-        Term("c term", term_c, unit="kPa", note="c * Nc * Fcs * Fcd * Fci"),
-        Term("q term", term_q, unit="kPa", note="q * Nq * Fqs * Fqd * Fqi"),
-        Term("gamma term", term_gamma, unit="kPa", note="0.5 * gamma * B * Ngamma * Fgs * Fgd * Fgi"),
-        Term("qu (gross ultimate)", qu, unit="kPa"),
-        Term("qnet(u) (net ultimate)", qnet_u, unit="kPa", note="qu - q"),
-        Term("qnet(all) (net allowable)", qnet_all, unit="kPa", note=f"qnet(u) / FS, FS={FS}"),
-        Term("qall (gross allowable)", qall_gross, unit="kPa", note="qnet(all) + q"),
-    ]
+    Vd_governing = values_c1["Vd"] if governing_label == "DA1-C1" else values_c2["Vd"]
+    A_eff_governing = values_c1["A_eff"] if governing_label == "DA1-C1" else values_c2["A_eff"]
+    if Vd_governing > 0:
+        utilisation = Vd_governing / (A_eff_governing * Rd_governing)
+        terms.append(
+            Term(
+                "Utilisation (governing combination)",
+                utilisation,
+                note=f"Vd / (A'*Rd) — {'PASS' if utilisation <= 1.0 else 'FAIL'} (<=1.0 required)",
+            )
+        )
+        if utilisation > 1.0:
+            warnings.append(
+                f"Governing combination ({governing_label}) FAILS: design vertical action exceeds "
+                "design bearing resistance. Increase footing size or review loads/ground parameters."
+            )
 
     headline = Term(
-        "Allowable bearing pressure (qall)",
-        qall_gross,
+        f"Design bearing resistance Rd ({governing_label} governs)",
+        Rd_governing,
         unit="kPa",
-        note=f"Allowable load capacity Qall = {Qall:.4g} kN for {B}m x {L}m footing",
+        note="Lower of DA1-C1 and DA1-C2 — the governing case per Design Approach 1.",
     )
 
     return CalcResult(
         headline=headline,
         terms=terms,
         warnings=warnings,
-        method="Meyerhof general bearing capacity equation (shallow foundations)",
+        method="EN 1997-1 Annex D bearing resistance, UK NA Design Approach 1 (DA1-C1 & DA1-C2)",
         references=[
-            "Meyerhof, G.G. (1963). 'Some recent research on the bearing capacity of "
-            "foundations.' Canadian Geotechnical Journal.",
-            "Das, B.M. 'Principles of Foundation Engineering' — standard reference "
-            "formulation for bearing capacity, shape, depth and inclination factors.",
+            "BS EN 1997-1:2004+A1:2013, Eurocode 7: Geotechnical design — Part 1: General rules, Annex D.",
+            "UK National Annex to BS EN 1997-1:2004+A1:2013.",
+            "Bond, A. & Harris, A., 'Decoding Eurocode 7' — widely-used secondary reference for the "
+            "Annex D formulae and DA1 worked application in UK practice.",
         ],
     )
 
 
 MODULE = CalcModule(
-    key="geotech_bearing_capacity",
-    name="Shallow Foundation Bearing Capacity (Meyerhof)",
+    key="geotech_bearing_resistance_ec7",
+    name="Spread Foundation Bearing Resistance (EN 1997-1 Annex D, UK NA, DA1)",
     discipline="Geotechnical",
     description=(
-        "Ultimate and allowable bearing capacity for a shallow strip/rectangular/"
-        "square footing, using Meyerhof's general bearing capacity equation with "
-        "shape, depth and load-inclination factors."
+        "Design bearing resistance for a shallow/spread footing to EN 1997-1 Annex D, "
+        "checked under both DA1 combinations (UK National Annex) with shape, base "
+        "inclination, and load inclination factors, and effective area for eccentric loads."
     ),
-    input_model=BearingCapacityInput,
+    input_model=BearingResistanceInput,
     calculate=calculate,
 )
 
 
 if __name__ == "__main__":
     # Quick manual run: python3 -m calcs.geotechnical.bearing_capacity
-    example = BearingCapacityInput(
-        cohesion_kpa=0,
-        friction_angle_deg=30,
+    example = BearingResistanceInput(
+        analysis_type="drained",
+        cohesion_c_prime_kpa=0,
+        friction_angle_phi_prime_deg=30,
         unit_weight_kn_m3=18,
         width_m=1.5,
         length_m=1.5,
         depth_m=1.0,
-        factor_of_safety=3.0,
+        characteristic_permanent_load_kn=300,
+        characteristic_variable_load_kn=100,
     )
     result = calculate(example)
-    print(f"qall = {result.headline.value:.2f} {result.headline.unit}")
+    print(f"Rd = {result.headline.value:.2f} {result.headline.unit} ({result.headline.note})")
     for t in result.terms:
         print(" ", t.formatted())
     for w in result.warnings:

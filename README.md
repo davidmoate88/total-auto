@@ -10,10 +10,20 @@ what's built vs. planned.
 
 ## Status
 
-**Milestone 1 (current):** Geotechnical bearing capacity calculator (Meyerhof method,
-shallow foundations) — the first working calc module, built inside a small extensible
-framework so future disciplines (structural, civil, etc.) and eventually the wider
-portfolio/comms tooling slot in the same way.
+**Milestone 1 (current):** Geotechnical spread foundation bearing resistance,
+to **EN 1997-1 (Eurocode 7) Annex D, UK National Annex, Design Approach 1** — built
+inside a small extensible framework so future disciplines (structural, civil, etc.)
+and eventually the wider portfolio/comms tooling slot in the same way. In front of it
+sits a **ground model interpreter**: paste SPT/CPT/lab site investigation data per
+soil stratum and it derives characteristic design parameters (phi', cu, unit weight)
+using established correlations, then hands them straight to the bearing resistance calc.
+
+**All calculations in this repo are intended to be Eurocode-compliant.** Read the
+caveat in `calcs/geotechnical/bearing_capacity.py`'s module docstring before relying
+on any of this for a real design — the formulae and partial factors were built from
+standard geotechnical literature/training knowledge, not by reading the purchased
+BS EN 1997-1 standard text directly, and should be checked against the current
+standard and National Annex before use.
 
 ## Getting started
 
@@ -36,15 +46,23 @@ pytest
 
 ```
 total-auto/
-├── app.py                          # Streamlit UI — lists and runs calc modules
+├── app.py                          # Streamlit UI — ground model interpreter + bearing calc
 ├── core/
 │   ├── calc_base.py                # Shared interfaces: CalcInput, CalcResult, registry
 │   └── report.py                   # Turns a CalcResult into a review-ready markdown sheet
 ├── calcs/
 │   └── geotechnical/
-│       └── bearing_capacity.py     # Meyerhof shallow foundation bearing capacity
+│       ├── bearing_capacity.py     # EN 1997-1 Annex D bearing resistance, UK NA DA1
+│       └── interpretation/
+│           ├── models.py           # SPT/CPT/lab test/stratum/site data models
+│           ├── correlations.py     # SPT/CPT -> phi'/cu empirical correlations
+│           ├── ground_model.py     # Pools data per stratum -> characteristic design params
+│           └── text_input.py       # Lenient line-based paste parser (not free-form NLP)
 ├── tests/
-│   └── test_bearing_capacity.py    # Validates factors against standard textbook values
+│   ├── test_bearing_capacity.py    # Validates EC7 Annex D factors/DA1 partial factors
+│   ├── test_correlations.py        # Validates SPT/CPT correlation functions
+│   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
+│   └── test_text_input.py          # Validates the paste-format parser
 └── docs/
     └── ROADMAP.md                  # Full vision and build order
 ```
