@@ -16,7 +16,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 |---|---|---|
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Five modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Combined bending+axial (SS6.3.3), block tearing, base plate bending, and moment connections not yet built |
-| `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Four modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one). All verified, all wired into the Streamlit UI. Surface water/SuDS, slope stability, and highways/pavement calcs not yet built |
+| `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Five modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items), slope stability, and highways/pavement calcs not yet built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are next |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -301,6 +301,25 @@ failure — cut/fill balance is a cost/logistics consideration, so it raises
 a `buildability` risk flag rather than `code_compliance` when the
 surplus/deficit is large, a deliberate category distinction from every
 other module built so far.
+
+The fifth, `surface_water_discharge.py`, answers `surface_water_drainage_suds`'s
+"Discharge rate calculation" `CalculationRequirement` — but deliberately
+does NOT derive the greenfield/brownfield runoff rate itself (the IH124/ICP
+SuDS Manual empirical methods, which need site-specific SAAR/SOIL data from
+the FEH webservice and coefficients this author wasn't confident enough in
+to embed). `permitted_discharge_rate_l_s` is a required direct input,
+per the project owner's explicit direction (computed externally, e.g. via
+the FEH webservice, and entered directly). What the module DOES calculate
+is the higher-confidence engineering that follows from that rate: a check
+against the common LLFA practical minimum (5 l/s), and flow control orifice
+sizing via the standard sharp-edged-orifice equation
+(`Q = Cd*A*sqrt(2*g*h)`, `Cd=0.61`) — well-established hydraulics, unlike
+the empirical runoff-rate methods. The section's OTHER requirement,
+"Attenuation volume sizing," needs the FSR/FEH rainfall depth-duration-
+frequency model (a distinct empirical dataset, not a formula) and is not
+built — tracked as an open item in docs/ROADMAP.md rather than attempted with
+unverified figures, per the same "flag, don't guess" discipline as
+everywhere else in this repo.
 
 ## Design principles
 

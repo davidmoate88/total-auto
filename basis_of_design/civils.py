@@ -206,8 +206,13 @@ def build_civils_bod_skeleton(project_reference: Optional[str] = None) -> Civils
                 Interface(with_discipline="flood_risk", description="Discharge rate and climate change allowance are usually set by the FRA."),
             ],
             calculations_required=[
-                CalculationRequirement(name="Attenuation volume sizing", description="Storage required to limit discharge to the agreed rate."),
-                CalculationRequirement(name="Discharge rate calculation", description="Greenfield/brownfield runoff rate per the governing standard."),
+                CalculationRequirement(name="Attenuation volume sizing", description="Storage required to limit discharge to the agreed rate. Not yet built -- needs the FSR/FEH rainfall depth-duration-frequency model; see docs/ROADMAP.md for this open item."),
+                CalculationRequirement(
+                    name="Discharge rate calculation",
+                    description="Practical-minimum discharge check + flow control orifice sizing, calcs/civil/surface_water_discharge.py. Takes the permitted rate as a direct input (from an external FEH/IH124 calculation) -- does not derive the greenfield/brownfield rate itself. See that module's docstring.",
+                    calc_module_reference="civil_surface_water_discharge_rate",
+                    standard_reference="CIRIA C753",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Discharge rate", value="Greenfield QBAR (or local authority/LLFA-specified rate)", notes="Confirm the governing rate with the Lead Local Flood Authority — some set a fixed litres/second/hectare cap instead."),

@@ -172,9 +172,24 @@ consideration, so it raises a `buildability` risk flag, not
 `code_compliance`, a deliberate category distinction from every other
 module built so far. See `docs/ARCHITECTURE.md`'s "Civils calcs" section.
 
+**Fifth civils module**: `calcs/civil/surface_water_discharge.py` — answers
+`surface_water_drainage_suds`'s "Discharge rate calculation" requirement,
+but deliberately does NOT derive the greenfield/brownfield runoff rate
+itself (the IH124/ICP SuDS Manual methods need FEH-webservice-sourced
+SAAR/SOIL data and empirical coefficients not confidently reproducible from
+memory). `permitted_discharge_rate_l_s` is a required direct input, per
+explicit project direction — compute it externally (e.g. via the FEH
+webservice) and enter it directly. What the module DOES calculate: a check
+against the common LLFA practical minimum (5 l/s) and flow control orifice
+sizing via the standard sharp-edged-orifice equation, both well-established
+hydraulics. The section's other requirement, "Attenuation volume sizing"
+(needs the FSR/FEH rainfall depth-duration-frequency model — a distinct
+empirical dataset, not a formula), is **not built** — tracked as an open
+GitHub issue rather than attempted with unverified figures.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
-base plate bending, the beam-column interaction check, surface water/SuDS
-and earthworks civils calcs, electrical/mechanical piping calcs) plus independent verification of
+base plate bending, the beam-column interaction check, slope stability and
+highways civils calcs, electrical/mechanical piping calcs) plus independent verification of
 every illustrative value flagged throughout the detail passes.
 
 ## Getting started
@@ -198,6 +213,7 @@ python3 -m calcs.civil.lateral_earth_pressure
 python3 -m calcs.civil.retaining_wall_stability
 python3 -m calcs.civil.foul_drainage
 python3 -m calcs.civil.cut_fill_balance
+python3 -m calcs.civil.surface_water_discharge
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -236,11 +252,12 @@ total-auto/
 │   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
 │   │   ├── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
 │   │   └── deck_grating.py         # BS EN 1991-1-1 loads, EN 1993-1-1 elastic bearing-bar check, UK NA
-│   └── civil/                       # FOUR MODULES BUILT — see below
+│   └── civil/                       # FIVE MODULES BUILT — see below
 │       ├── lateral_earth_pressure.py   # Rankine active earth pressure, EN 1997-1 UK NA DA1
 │       ├── retaining_wall_stability.py # Sliding/overturning/bearing check, EN 1997-1 UK NA DA1
 │       ├── foul_drainage.py            # Peak foul flow + Manning's equation pipe capacity check
-│       └── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
+│       ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
+│       └── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
@@ -269,6 +286,7 @@ total-auto/
 │   ├── test_retaining_wall_stability.py # Validates sliding/overturning/bearing arithmetic
 │   ├── test_foul_drainage.py       # Validates peak flow generation and Manning's equation arithmetic
 │   ├── test_cut_fill_balance.py    # Validates grid-method volume arithmetic and paste parsing
+│   ├── test_surface_water_discharge.py  # Validates orifice sizing arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

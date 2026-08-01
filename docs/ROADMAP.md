@@ -233,6 +233,32 @@ plan, not a user manual.
       real browser, including the new text_area rendering correctly for
       multi-line pasted input -- UI net balance (260 m³) matched the CLI
       run exactly. 207/207 tests passing.
+- [x] Fifth civils calc module: `calcs/civil/surface_water_discharge.py` —
+      answers `surface_water_drainage_suds`'s "Discharge rate calculation"
+      `CalculationRequirement`, per the project owner's explicit direction
+      that this NOT attempt to derive the greenfield/brownfield runoff rate
+      itself: the IH124/ICP SuDS Manual empirical methods need SAAR/SOIL
+      data from the FEH webservice and coefficients this author judged not
+      confidently reproducible from memory (unlike the Rankine/Manning's
+      formulae elsewhere, simple enough to verify independently).
+      `permitted_discharge_rate_l_s` is a required direct input instead --
+      computed externally and entered directly. What the module DOES
+      calculate, with high confidence: a check against the common LLFA
+      practical minimum discharge (5 l/s, illustrative default) and flow
+      control orifice sizing via the standard sharp-edged-orifice equation
+      (`Q = Cd*A*sqrt(2*g*h)`, `Cd=0.61`) -- turning the given rate into an
+      actionable deliverable (an orifice diameter) rather than just
+      echoing it back. Flags a vortex flow control device (Hydro-Brake)
+      as an alternative when the required orifice would be impractically
+      small (<75mm default). 8 new tests, arithmetic verified by hand.
+      Verified end-to-end in a real browser -- UI result (75.2mm) matched
+      the CLI run exactly. 215/215 tests passing.
+      The section's OTHER requirement, "Attenuation volume sizing" (storage
+      to limit discharge to the agreed rate), needs the FSR/FEH rainfall
+      depth-duration-frequency model -- a distinct empirical dataset, not a
+      formula -- and per the project owner's explicit direction is left
+      NOT BUILT, tracked as an open item in this roadmap rather than attempted with
+      unverified figures.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -372,13 +398,15 @@ mechanical piping**.
       Code per the project owner's direction. **In progress**: structural has
       five modules built and wired (`beam_capacity.py`, `column_capacity.py`,
       `bolted_shear_connection.py`, `base_plate.py`, `deck_grating.py`), and
-      civils has its first four (`lateral_earth_pressure.py`,
+      civils has its first five (`lateral_earth_pressure.py`,
       `retaining_wall_stability.py`, `foul_drainage.py`,
-      `cut_fill_balance.py`) -- see Milestone 1 above for all.
+      `cut_fill_balance.py`, `surface_water_discharge.py`) -- see Milestone 1
+      above for all.
       Remaining: the beam-column combined bending+axial interaction, block
-      tearing, base plate bending, civils surface water/SuDS/slope-
-      stability/highways calcs, and all calcs for electrical_lv/
-      electrical_hv/mechanical_piping. Independent verification of every
+      tearing, base plate bending, civils attenuation volume sizing (open
+      open item -- needs the FSR/FEH rainfall model)/slope-stability/
+      highways calcs, and all calcs for electrical_lv/electrical_hv/
+      mechanical_piping. Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current
       standard texts/project requirements is still outstanding for all
