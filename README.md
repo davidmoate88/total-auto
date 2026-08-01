@@ -47,9 +47,32 @@ compliance-sequencing condition.
 points from common UK/industry practice, not confirmed project- or
 client-specific figures** — every one is flagged for verification in its
 module's docstring, the same "verify before real use" caveat applied
-throughout this repo. The natural next step is building the corresponding
-`calcs/<discipline>/` modules (beyond geotechnical) that these criteria and
-`calculations_required` entries point at.
+throughout this repo.
+
+**Milestone 1b (complete):** with all five disciplines fully detailed, built
+`integration/` — a cross-discipline process-flow and orchestration layer
+derived entirely from the `Interface` entries the disciplines already
+declare (no new dependency information invented). `integration/graph.py`
+turns all 33 of those interfaces into one dependency graph and runs cycle
+detection over it; the finding: **geotechnical is the one true starting
+point, structural can follow independently right after it, but civils,
+LV electrical, HV electrical, and mechanical piping form one mutually-
+dependent cluster with no valid strict order among them** — they need
+iterative/concurrent co-design, not a one-pass pipeline. `integration/
+process_state.py` tracks per-project resolution status and derives what's
+actually unblocked to work on right now. `integration/open_items.py` scans
+every discipline's criteria/assumptions for "to be confirmed"-style pending
+inputs (53 found) and wires them directly into `comms.meeting_minutes.
+models.ActionItem` — the first of the "Intended integration points" in
+`docs/ARCHITECTURE.md` to actually be built. `integration/master_document.py`
+stitches the process-flow narrative, the dependency diagram, the open items
+register, and all five disciplines' full output into one combined
+project-level document — see `docs/examples/master_basis_of_design.md` and
+`docs/examples/process_flow_and_open_items.md`.
+
+The natural next step is building the corresponding `calcs/<discipline>/`
+modules (beyond geotechnical) that the BoD criteria and `calculations_required`
+entries point at.
 
 ## Getting started
 
@@ -63,6 +86,15 @@ streamlit run app.py
 
 # Run the calc engine directly (no UI)
 python3 -m calcs.geotechnical.bearing_capacity
+
+# Print the discipline dependency graph as a Mermaid flowchart
+python3 -m integration.graph
+
+# Print the open items / RFI register
+python3 -m integration.open_items
+
+# Print the full combined project basis of design (all five disciplines + process flow)
+python3 -m integration.master_document
 
 # Run tests
 pytest
@@ -96,16 +128,22 @@ total-auto/
 │   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
+├── integration/                      # BUILT — cross-discipline process flow / orchestration
+│   ├── graph.py                    # Interface() entries -> dependency graph, cycle detection, Mermaid
+│   ├── process_state.py            # Per-project resolution status -> what's unblocked/blocked
+│   ├── open_items.py                # Pending-input extraction -> ActionItem conversion
+│   └── master_document.py          # Combined project-level document (all 5 disciplines + process flow)
 ├── portfolio/                       # DATA MODEL ONLY — Project/Portfolio contract, no logic
 ├── comms/
-│   ├── meeting_minutes/             # DATA MODEL + interface stub (extract_minutes())
+│   ├── meeting_minutes/             # DATA MODEL + interface stub (extract_minutes()); ActionItem now also produced by integration/open_items.py
 │   └── email_triage/                # DATA MODEL + interface stub (triage_inbox())
 ├── tests/
 │   ├── test_bearing_capacity.py    # Validates EC7 Annex D factors/DA1 partial factors
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser
-│   └── test_basis_of_design.py     # Validates all five discipline BoD skeletons + risk flags
+│   ├── test_basis_of_design.py     # Validates all five discipline BoD skeletons + risk flags
+│   └── test_integration.py         # Validates the dependency graph, cycle detection, open items, master document
 └── docs/
     ├── ARCHITECTURE.md             # Domain map, design principles, integration points
     ├── ROADMAP.md                  # Full vision and build order

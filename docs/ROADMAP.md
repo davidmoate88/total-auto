@@ -39,7 +39,7 @@ as efficient as possible.
       flag) and into the civils/structural BoD skeletons wherever a permanent design
       genuinely implies a distinct, riskier construction-stage condition.
 
-## Milestone 1a — Discipline basis of design (in progress)
+## Milestone 1a — Discipline basis of design (complete)
 
 Agreed approach: work through each discipline's basis of design one at a time,
 each split into its "necessary elements" first as an all-encompassing
@@ -170,6 +170,55 @@ mechanical piping**.
       value" flagged throughout the detail passes against actual current
       standard texts/project requirements) is the natural next piece of work.
 
+## Milestone 1b — Cross-discipline process flow & integration layer (complete)
+
+With all five disciplines' basis of design fully detailed, the next question
+raised was no longer "what does discipline X say" but "how does this all fit
+together — what order do the inputs/outputs actually need to happen in, and
+how do five separate documents become one coherent project view". Built as
+a new `integration/` package, entirely derived from data already declared in
+`basis_of_design/` (no new domain knowledge invented):
+
+- [x] **Dependency graph** (`integration/graph.py`) — every `Interface`
+      entry across all 44 sections (33 of them) turned into one directed
+      graph, with automatic resolution of `with_discipline` referring to a
+      whole discipline, a specific section, or an external actor not
+      modelled in this repo (process, architectural, contractor). Includes
+      Tarjan's SCC algorithm for discipline-level cycle detection and a
+      Mermaid flowchart renderer.
+- [x] **The actual dependency finding** (not asserted, derived): geotechnical
+      is the one true starting point (nothing depends back on it);
+      structural depends only on geotechnical and can be sequenced right
+      after it, independently; but **civils, electrical_lv, electrical_hv,
+      and mechanical_piping form one mutually-dependent cluster** with no
+      valid strict order among them — they need iterative/concurrent
+      co-design, not a one-pass pipeline. This matches how these
+      disciplines are actually coordinated on a real project; the graph
+      just makes it explicit.
+- [x] **Resolution-state tracking** (`integration/process_state.py`) —
+      `ProjectProcessState` tracks not_started/in_progress/resolved per
+      graph node; `unblocked_sections()`/`blocked_sections()` derive what's
+      actually workable right now vs. stuck (and on what) from that state.
+      Not a persistence layer — in-memory, same as every other model here.
+- [x] **Open items / RFI register** (`integration/open_items.py`) — scans
+      every section's criteria/assumptions for pending-input language ("to
+      be confirmed", "pending", "provisional", etc.) and collects them into
+      one list (53 found across all five disciplines) instead of five
+      separate documents read by eye. `open_items_as_action_items()` wires
+      this directly into `comms.meeting_minutes.models.ActionItem` — the
+      first of docs/ARCHITECTURE.md's "Intended integration points" to
+      actually be built, not just noted.
+- [x] **Combined master document** (`integration/master_document.py`) — one
+      project-level document stitching the process-flow narrative, the
+      Mermaid diagram, the open items register, and all five disciplines'
+      full basis of design output together (see
+      `docs/examples/master_basis_of_design.md` and
+      `docs/examples/process_flow_and_open_items.md`).
+- [x] 13 new tests (`tests/test_integration.py`) covering graph construction,
+      cycle detection (including that structural is correctly excluded from
+      the cycle), unblock/block derivation, open items extraction/
+      conversion, and the combined document.
+
 ## Milestone 2 — Meeting minutes → actions
 
 - [ ] Ingest a transcript (text file to start).
@@ -227,3 +276,27 @@ mechanical piping**.
   ad-hoc "warnings" shape. `temporary_works` is a named category specifically
   because a design's permanent-condition analysis routinely doesn't cover its
   (often more critical) construction-stage condition — see docs/ARCHITECTURE.md.
+- **Derive the process flow from existing data, don't hand-author a new
+  dependency model**: `integration/graph.py` is built entirely by
+  introspecting the `Interface` entries each discipline already declares,
+  rather than a person separately asserting "X depends on Y" a second time
+  in a new format. This means the graph can't drift out of sync with the
+  BoDs (there's only one place dependency information is ever written), and
+  it caught something a hand-authored sequence would likely have gotten
+  wrong or missed entirely: civils/electrical_lv/electrical_hv/mechanical_piping
+  form a genuine mutually-dependent cluster, not a chain — verified with
+  Tarjan's SCC algorithm rather than eyeballed.
+- **Orchestration tells you what's unblocked, it doesn't run anything**:
+  `integration/process_state.py` deliberately has no side effects — it's a
+  pure function of (graph, resolution state) -> (what can proceed, what's
+  stuck on what). Nothing auto-resolves an external input (a DNO fault level
+  statement, process flow data); the model has no way to know a real-world
+  input has actually arrived except being told, same as any other status
+  field in this repo.
+- **Open items extraction favours precision over recall**: `integration/
+  open_items.py`'s pending-input keyword list is deliberately tight — a
+  missed open item is safer than a settled criterion wrongly flagged as
+  still pending, for something meant to become an actual to-do list (and,
+  via `open_items_as_action_items()`, an actual `ActionItem`). Extend the
+  keyword list if a discipline's wording style produces misses once used
+  for real, rather than switching to free-text NLP.

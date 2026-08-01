@@ -13,8 +13,9 @@ pieces are meant to connect once they're all built out.
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | Placeholder — README + pattern only |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks) | Placeholder — README + pattern only |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are next |
+| `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
-| `comms/meeting_minutes/` | Transcript → structured minutes → actions | Data model + interface stub (`extract_minutes()` raises `NotImplementedError`) |
+| `comms/meeting_minutes/` | Transcript → structured minutes → actions | Data model + interface stub (`extract_minutes()` raises `NotImplementedError`); `ActionItem` now also produced directly by `integration.open_items.open_items_as_action_items()` |
 | `comms/email_triage/` | Inbox summarization/prioritisation | Data model + interface stub (`triage_inbox()` raises `NotImplementedError`), gated on a connector |
 | `core/` | Shared calc framework (input/result models, registry, report generator, risk flagging) | Built, used by `calcs/geotechnical/` |
 
@@ -140,6 +141,69 @@ client-specific figures. The corresponding `calcs/<discipline>/` modules
 independent verification of every illustrative value flagged throughout the
 detail passes, is the natural next piece of work.
 
+## Process flow and cross-discipline integration (`integration/`)
+
+Once all five disciplines had a full basis of design, the next question was
+no longer "what does discipline X say" but "how does this all fit together —
+what has to happen before what, and how do the five separate documents
+become one coherent view of a project". `integration/` answers that without
+inventing any new domain knowledge: it's built entirely by introspecting the
+`Interface` entries every discipline module already declares.
+
+- **`integration/graph.py`** — walks all 44 sections across the five
+  disciplines and turns their 33 `Interface(with_discipline=...)` entries
+  into a directed dependency graph. `with_discipline` is used inconsistently
+  in the source modules (sometimes a whole discipline, sometimes a specific
+  section name, sometimes an external actor like "process" or "architectural"
+  that isn't modelled here at all) — `_resolve_target()` normalises all
+  three into one of four node kinds (`discipline`, `section`, `calc`,
+  `external`). `find_discipline_cycles()` runs Tarjan's strongly-connected-
+  components algorithm over the collapsed discipline-level graph, and
+  `to_mermaid()` renders the same view as a diagram.
+
+  **The actual finding**, not asserted but derived from the graph:
+  geotechnical (the one built calc) is the one true starting point, nothing
+  depends back on it. Structural depends only on geotechnical (plus an
+  external contractor for temporary works) and nothing loops back into it —
+  it can be sequenced right after geotechnical and developed independently.
+  But **civils, electrical_lv, electrical_hv, and mechanical_piping form one
+  mutually-dependent cluster** — each references at least one of the others
+  (utilities coordination, hazardous area classification, transformer/LV
+  supply origin, buried pipe routing) and the references loop back round.
+  There is no valid strict order among those four; they need iterative,
+  concurrent co-design, and pretending otherwise would just be wrong. This
+  mirrors how these disciplines are actually coordinated on a real project —
+  the graph just makes it explicit instead of leaving it as tribal knowledge.
+
+- **`integration/process_state.py`** — `ProjectProcessState` tracks a
+  per-project resolution status (`not_started` / `in_progress` / `resolved`)
+  against any node in the graph (a section, the geotechnical calc, or an
+  external input). `unblocked_sections()` / `blocked_sections()` derive what
+  can actually be worked on right now vs. what's stuck and specifically on
+  what, from that state plus the graph — this is the "orchestration" layer:
+  it doesn't run anything itself, it tells you what's able to run.
+  `progress_summary()` gives a per-discipline section-count-by-status view.
+  Nothing here is a persistence layer (see "What deliberately hasn't been
+  built yet" below) — it's an in-memory model a caller populates and queries
+  within a session, same as every other model in this repo.
+
+- **`integration/open_items.py`** — every section's `criteria`/`assumptions`
+  written during the detail pass is scanned for pending-input language
+  ("to be confirmed", "pending", "provisional", etc.) and collected into a
+  single `OpenItem` register (53 found as of the detail pass, spanning all
+  five disciplines) — turning scattered notes like "to be confirmed from the
+  LV load schedule" into one list instead of five separate documents read by
+  eye. `open_items_as_action_items()` converts these directly into
+  `comms.meeting_minutes.models.ActionItem` — the first of the "Intended
+  integration points" below to actually be wired rather than just noted.
+
+- **`integration/master_document.py`** — `render_process_flow_summary()`
+  produces the dependency-order narrative + Mermaid diagram + open items
+  register on its own; `render_master_basis_of_design()` wraps that with all
+  five disciplines' full basis-of-design output into one combined
+  project-level document (see `docs/examples/master_basis_of_design.md` and
+  `docs/examples/process_flow_and_open_items.md`).
+
 ## Design principles
 
 1. **Data contract before logic.** Every domain gets a `models.py` (pydantic)
@@ -167,20 +231,27 @@ detail passes, is the natural next piece of work.
    calc modules — don't let a data-interpretation layer bake in design-stage
    assumptions.
 
-## Intended integration points (not yet wired up)
+## Intended integration points
 
-These are the seams the domains are expected to connect through once they're
-built out — noted here so future work doesn't reinvent the shape:
+Most of these seams are still just noted for future work — but one is now
+actually wired, not just planned:
 
+- **Wired:** `integration.open_items.open_items_as_action_items()` turns the
+  open items register directly into `comms.meeting_minutes.models.ActionItem`
+  instances, with `related_project_reference` set when a project reference is
+  supplied. This is the first real connection between two previously-separate
+  domains in this repo.
 - `portfolio.models.BuildabilityNote.related_calc_reference` — a free-text
   placeholder field meant to reference a specific calc module's report (e.g.
   `"geotech_bearing_resistance_ec7:project-42-footing-3"`), so a project's
-  buildability notes can point at the calculation that backs them up.
+  buildability notes can point at the calculation that backs them up. Not
+  wired yet.
 - `comms.meeting_minutes.models.ActionItem.related_project_reference` and
   `comms.email_triage.models.EmailSummary.related_project_reference` — both
   point at `portfolio.models.Project.reference`, so actions and emails can be
   filed against a specific portfolio project once the portfolio import/dashboard
-  exists.
+  exists. Not wired yet (open-items-derived ActionItems can already carry
+  this field — see above — but nothing yet reads it back into a `Project`).
 - A future top-level `total_auto/` (or similar) package could own cross-domain
   operations (e.g. "show me every open risk and action item for project X"),
   once there's more than one domain with real data to join across. Not created
