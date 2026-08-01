@@ -30,8 +30,47 @@ plan, not a user manual.
 - [ ] Second geotechnical calc (e.g. settlement, or retaining wall) to prove the
       framework generalises within a discipline — also to EC7 (Annex C for
       retaining structures, etc.).
-- [ ] First structural calc module, to the relevant Eurocode (EN 1992 concrete /
-      EN 1993 steel / EN 1995 timber depending on what's needed first).
+- [x] First structural calc module: `calcs/structural/beam_capacity.py` — a
+      simply-supported steel I/H-section beam bending/shear/deflection check to
+      EN 1993-1-1 (UK NA), following the same shape as `bearing_capacity.py`
+      (pydantic input, full `Term` working, explicit ULS combination factors,
+      shared `DesignRiskFlag` mechanism) and answering
+      `primary_steel_frame`'s "Beam/column member capacity checks"
+      `CalculationRequirement` in `basis_of_design/structural.py` (now wired via
+      `calc_module_reference` — the first real use of that field). Scoped to
+      bending-dominant beam checks only: cross-section classification (Table
+      5.2, Class 1-3; Class 4 raises a critical risk flag rather than being
+      silently mishandled), Mc,Rd, Vpl,Rd, and a deflection check against a
+      configurable span/N limit. Lateral-torsional buckling, the
+      high-shear/bending interaction (SS6.2.8), and column/combined-axial
+      checks are explicitly flagged as not implemented rather than
+      approximated — same "flag, don't hide" pattern as the Ngamma caveat in
+      `bearing_capacity.py`. 18 new tests, all verified against independently
+      hand-derivable values (an idealised test section with geometry-derived
+      A/Iy/Wel/Wpl, the same approach used for Nq/Nc in the geotechnical
+      tests). Not yet wired into the Streamlit UI.
+- [x] Second structural calc module: `calcs/structural/column_capacity.py` —
+      cross-section compression resistance (SS6.2.4) and flexural buckling
+      resistance about both principal axes (SS6.3.1) for a rolled steel I/H
+      column, to EN 1993-1-1 (UK NA), completing `primary_steel_frame`'s
+      "beam/column member capacity checks" as the "column" half — now split
+      into two separate `CalculationRequirement` entries in
+      `basis_of_design/structural.py` (beam -> `structural_beam_capacity_ec3`,
+      column -> `structural_column_capacity_ec3`) since they're two distinct
+      modules, not one. Deliberately scoped to PURE AXIAL COMPRESSION —
+      combined bending+axial (a true beam-column, SS6.3.3) is explicitly
+      flagged as not covered by either module rather than approximated by
+      summing utilisations, which would not be a valid EN 1993-1-1 check.
+      Buckling curve auto-selection (Table 6.2) is restricted to rolled I/H
+      sections with h/b>1.2 and tf<=40mm (the common case); outside that,
+      the module requires explicit curve overrides rather than guessing. 20
+      new tests, including one that specifically confirms the web
+      classification uses the stricter uniform-compression row (33/38/42
+      epsilon) rather than the bending row (72/83/124 epsilon) the beam
+      module uses for the same c/t ratio — the two modules' classification
+      logic is intentionally NOT shared/copy-pasted, since they classify a
+      genuinely different stress condition. Not yet wired into the
+      Streamlit UI.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -168,11 +207,14 @@ mechanical piping**.
       **This completes the detail pass across all five agreed disciplines.**
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
-      Code per the project owner's direction; not started for any discipline
-      beyond geotechnical. With the detail pass now complete for all five
-      disciplines, this (plus independent verification of every "illustrative
+      Code per the project owner's direction. **Started**: structural's first
+      module (`beam_capacity.py`, see Milestone 1 above) is built and wired.
+      Remaining: connection design and column/combined-axial checks for
+      structural, and all calcs for civils/electrical_lv/electrical_hv/
+      mechanical_piping. Independent verification of every "illustrative
       value" flagged throughout the detail passes against actual current
-      standard texts/project requirements) is the natural next piece of work.
+      standard texts/project requirements is still outstanding for all
+      disciplines.
 
 ## Milestone 1b — Cross-discipline process flow & integration layer (complete)
 
@@ -341,3 +383,23 @@ steps.
   was executed against the real skeleton before being written down, not just
   described from memory — the same standard applied to everything else in
   this repo (see the "verify" pattern throughout this log).
+- **Section properties are a catalogue input, not a derived one**:
+  `calcs/structural/beam_capacity.py` takes A/Iy/Wel,y/Wpl,y directly as
+  inputs rather than computing them from h/b/tw/tf, unlike the geometric
+  values it does derive (the Table 5.2 classification c/t ratios). A rolled
+  section's real properties (root radii, fillets, rolling tolerances) are
+  more reliably read from a manufacturer's catalogue (e.g. the SCI "Blue
+  Book") than reconstructed from nominal dimensions with an idealised
+  rectangle formula — the same reasoning as keeping ground parameters
+  "characteristic" and partial factors downstream: don't let one layer
+  quietly bake in an approximation the next layer's input should really
+  supply directly.
+- **Flag unimplemented mechanics rather than approximate them**: LTB
+  (EN 1993-1-1 SS6.3.2), the high-shear/bending interaction (SS6.2.8), and
+  Class 4 effective section properties (EN 1993-1-5) are all genuinely
+  relevant to a real steel beam check and are NOT implemented in
+  `beam_capacity.py` — each raises an explicit warning (and, for Class 4, a
+  critical risk flag) naming exactly what wasn't checked, rather than a
+  partial/best-guess implementation that could be mistaken for a complete
+  one. Same principle as the Ngamma caveat in `bearing_capacity.py`, applied
+  to "not built at all" rather than "built but uncertain."

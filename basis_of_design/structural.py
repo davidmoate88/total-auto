@@ -173,7 +173,16 @@ def build_structural_bod_skeleton(project_reference: Optional[str] = None) -> St
                 Standard(code="BS EN 1993-1-8", national_annex="UK NA", title="Design of joints"),
             ],
             calculations_required=[
-                CalculationRequirement(name="Beam/column member capacity checks", standard_reference="BS EN 1993-1-1"),
+                CalculationRequirement(
+                    name="Beam member capacity checks", standard_reference="BS EN 1993-1-1",
+                    calc_module_reference="structural_beam_capacity_ec3",
+                    description="Bending/shear/deflection, calcs/structural/beam_capacity.py. Continuously-restrained, bending-dominant only -- no LTB, no axial.",
+                ),
+                CalculationRequirement(
+                    name="Column axial buckling capacity checks", standard_reference="BS EN 1993-1-1",
+                    calc_module_reference="structural_column_capacity_ec3",
+                    description="Cross-section + flexural buckling resistance, calcs/structural/column_capacity.py. Pure axial only -- combined bending+axial (SS6.3.3) is not covered by either module.",
+                ),
                 CalculationRequirement(name="Connection design", standard_reference="BS EN 1993-1-8"),
             ],
             criteria=[

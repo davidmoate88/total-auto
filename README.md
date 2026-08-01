@@ -72,9 +72,29 @@ register, and all five disciplines' full output into one combined
 project-level document — see `docs/examples/master_basis_of_design.md` and
 `docs/examples/process_flow_and_open_items.md`.
 
-The natural next step is building the corresponding `calcs/<discipline>/`
-modules (beyond geotechnical) that the BoD criteria and `calculations_required`
-entries point at.
+**Milestone 1d (in progress):** started building the `calcs/<discipline>/` modules
+(beyond geotechnical) that the BoD `calculations_required` entries point at, for
+structural so far:
+- `calcs/structural/beam_capacity.py` — simply-supported steel I/H-section beam
+  bending/shear/deflection check to EN 1993-1-1 (UK NA). Bending-dominant only —
+  no lateral-torsional buckling, no axial.
+- `calcs/structural/column_capacity.py` — cross-section compression resistance
+  and flexural buckling resistance (both principal axes) for the same section
+  type, to EN 1993-1-1 (UK NA). Pure axial only.
+
+Together these cover `primary_steel_frame`'s "Beam/column member capacity
+checks" as two separate `CalculationRequirement` entries in
+`basis_of_design/structural.py` (now wired via `calc_module_reference`, the
+first real use of that field) — but a member carrying **both** bending and
+axial load at once (a true beam-column) needs the EN 1993-1-1 SS6.3.3
+interaction check, which neither module performs; that's flagged explicitly in
+both modules' docstrings/warnings rather than approximated. Not yet wired into
+the Streamlit UI (`app.py` still only serves the geotechnical tools).
+
+The natural next step is more `calcs/<discipline>/` modules (connection design,
+the beam-column interaction check, civils/electrical/mechanical piping calcs)
+plus independent verification of every illustrative value flagged throughout
+the detail passes.
 
 ## Getting started
 
@@ -86,8 +106,10 @@ pip install -r requirements.txt
 # Run the web UI
 streamlit run app.py
 
-# Run the calc engine directly (no UI)
+# Run a calc engine directly (no UI)
 python3 -m calcs.geotechnical.bearing_capacity
+python3 -m calcs.structural.beam_capacity
+python3 -m calcs.structural.column_capacity
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -120,7 +142,9 @@ total-auto/
 │   │       ├── correlations.py     # SPT/CPT -> phi'/cu empirical correlations
 │   │       ├── ground_model.py     # Pools data per stratum -> characteristic design params
 │   │       └── text_input.py       # Lenient line-based paste parser (not free-form NLP)
-│   ├── structural/                  # PLACEHOLDER — README + pattern only, no modules yet
+│   ├── structural/                  # TWO MODULES BUILT — see below
+│   │   ├── beam_capacity.py        # EN 1993-1-1 simply-supported beam bending/shear/deflection check, UK NA
+│   │   └── column_capacity.py      # EN 1993-1-1 axial buckling resistance check (both axes), UK NA
 │   └── civil/                       # PLACEHOLDER — README + pattern only, no modules yet
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
@@ -141,6 +165,8 @@ total-auto/
 │   └── email_triage/                # DATA MODEL + interface stub (triage_inbox())
 ├── tests/
 │   ├── test_bearing_capacity.py    # Validates EC7 Annex D factors/DA1 partial factors
+│   ├── test_beam_capacity.py       # Validates EN 1993-1-1 classification, Mc,Rd/Vpl,Rd, deflection
+│   ├── test_column_capacity.py     # Validates EN 1993-1-1 classification, Nc,Rd/Nb,Rd, buckling curves
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

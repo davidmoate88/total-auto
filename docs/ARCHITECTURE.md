@@ -15,7 +15,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | Package | Purpose | Status |
 |---|---|---|
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
-| `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | Placeholder — README + pattern only |
+| `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Two modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection) and `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes). Both verified, neither wired into the Streamlit UI. Combined bending+axial (SS6.3.3) and connection design (EN 1993-1-8) not yet built |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks) | Placeholder — README + pattern only |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are next |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
