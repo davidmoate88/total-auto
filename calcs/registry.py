@@ -22,6 +22,8 @@ from calcs.electrical_lv.earth_fault_loop_impedance import MODULE as ELECTRICAL_
 from calcs.electrical_lv.load_schedule_diversity import MODULE as ELECTRICAL_LV_LOAD_SCHEDULE_DIVERSITY
 from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACITY
 from calcs.mechanical_piping.line_sizing_velocity_check import MODULE as MECHANICAL_PIPING_LINE_SIZING_VELOCITY_CHECK
+from calcs.mechanical_piping.ped_pesr_classification_check import MODULE as MECHANICAL_PIPING_PED_PESR_CLASSIFICATION_CHECK
+from calcs.mechanical_piping.pipe_stress_check import MODULE as MECHANICAL_PIPING_PIPE_STRESS_CHECK
 from calcs.structural.base_plate import MODULE as STRUCTURAL_BASE_PLATE
 from calcs.structural.beam_capacity import MODULE as STRUCTURAL_BEAM_CAPACITY
 from calcs.structural.beam_column_interaction import MODULE as STRUCTURAL_BEAM_COLUMN_INTERACTION
@@ -54,6 +56,8 @@ CALC_REGISTRY: list[CalcModule] = [
     ELECTRICAL_HV_ARC_FLASH_PPE_CHECK,
     ELECTRICAL_HV_SUBSTATION_EARTHING_TOUCH_STEP,
     MECHANICAL_PIPING_LINE_SIZING_VELOCITY_CHECK,
+    MECHANICAL_PIPING_PIPE_STRESS_CHECK,
+    MECHANICAL_PIPING_PED_PESR_CLASSIFICATION_CHECK,
 ]
 
 

@@ -30,8 +30,10 @@ criteria, assumptions, exclusions, and deliverables are now populated per
 section. Calculation logic itself (the corresponding `calcs/mechanical_piping/`
 modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
-module exists (see calcs/mechanical_piping/line_sizing_velocity_check.py
-for the first one); the rest remain unset until built.
+module exists (see calcs/mechanical_piping/line_sizing_velocity_check.py,
+calcs/mechanical_piping/pipe_stress_check.py, and
+calcs/mechanical_piping/ped_pesr_classification_check.py for the first
+three); the rest remain unset until built.
 This completes the detail pass across all five agreed disciplines.
 """
 
@@ -105,6 +107,14 @@ def build_mechanical_piping_bod_skeleton(project_reference: Optional[str] = None
                 Standard(code="Pressure Equipment (Safety) Regulations 2016", notes="UK implementation of PED post-Brexit."),
                 Standard(code="Pressure Systems Safety Regulations 2000", notes="UK — in-service written scheme of examination requirement."),
             ],
+            calculations_required=[
+                CalculationRequirement(
+                    name="PED/PESR classification check",
+                    description="PED Article 2(1)/PESR scope threshold (PS > 0.5 bar) computed directly, plus conformity assessment bookkeeping from an externally-determined PED/PESR category, calcs/mechanical_piping/ped_pesr_classification_check.py. Does NOT derive the category itself -- the Annex II boundary tables are not reproduced, see that module's docstring.",
+                    standard_reference="PED 2014/68/EU / Pressure Equipment (Safety) Regulations 2016",
+                    calc_module_reference="mechanical_piping_ped_pesr_classification_check",
+                ),
+            ],
             criteria=[
                 DesignCriterion(name="Governing piping code", value="ASME B31.3 and BS EN 13480 (kept generic)", notes="Kept generic per project direction — the specific governing code is confirmed per project/client, not fixed by this basis of design."),
                 DesignCriterion(name="Design pressure", value="to be confirmed from process data", notes="Set per line from the process design conditions, not a single project-wide figure."),
@@ -168,7 +178,12 @@ def build_mechanical_piping_bod_skeleton(project_reference: Optional[str] = None
                 Interface(with_discipline="structural", description="Pipe support loads (dead, thermal, occasional) are applied loads on the supporting steelwork — see basis_of_design/structural.py."),
             ],
             calculations_required=[
-                CalculationRequirement(name="Pipe flexibility/stress analysis", standard_reference="ASME B31.3"),
+                CalculationRequirement(
+                    name="Pipe flexibility/stress analysis",
+                    description="ASME B31.3 sustained stress (Eq 17) and thermal expansion stress range (Eq 1a/13) check, calcs/mechanical_piping/pipe_stress_check.py. Does NOT perform flexibility analysis -- resultant moments are required direct inputs from an external analysis (e.g. CAESAR II), see that module's docstring.",
+                    standard_reference="ASME B31.3",
+                    calc_module_reference="mechanical_piping_pipe_stress_check",
+                ),
                 CalculationRequirement(name="Support load schedule", description="Loads passed to the structural discipline per support point."),
             ],
             criteria=[

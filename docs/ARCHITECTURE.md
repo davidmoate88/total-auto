@@ -19,7 +19,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Six modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it), `slope_stability.py` (Fellenius Method of Slices, both DA1 combinations, slice geometry as a direct input — see below). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items) and highways/pavement calcs not yet built |
 | `calcs/electrical_lv/` | LV electrical calc modules | **Five modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance). All verified, all wired into the Streamlit UI. Motor starting skipped per project direction |
 | `calcs/electrical_hv/` | HV electrical calc modules | **Four modules built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output), `protection_grading.py` (IEC 60255-151 IDMT relay operating times, upstream/downstream grading margin check — curve constants embedded directly, unlike this discipline's other modules), `arc_flash_ppe_check.py` (required PPE arc rating vs a practical PPE limit from an externally-supplied incident energy figure — deliberately shaped differently from the LV arc flash module), `substation_earthing_touch_step.py` (Sverak grid resistance + IEEE 80 tolerable touch/step voltage, checked against an externally-supplied actual mesh/step voltage). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
-| `calcs/mechanical_piping/` | Mechanical piping calc modules | **First module built** — `line_sizing_velocity_check.py` (actual velocity vs the API RP 14E erosional velocity limit and a target velocity range — the fifth and final discipline to get a working calc, see below). Verified, wired into the Streamlit UI. Pipe stress analysis/support loads and every other named calc not yet built |
+| `calcs/mechanical_piping/` | Mechanical piping calc modules | **Three modules built** — `line_sizing_velocity_check.py` (actual velocity vs the API RP 14E erosional velocity limit and a target velocity range — the fifth and final discipline to get a working calc), `pipe_stress_check.py` (ASME B31.3 sustained stress + thermal expansion stress range check from externally-supplied resultant moments — does not perform flexibility analysis), `ped_pesr_classification_check.py` (PED Article 2(1) scope threshold computed directly, conformity assessment bookkeeping from an externally-determined category — see below). All verified, all wired into the Streamlit UI. Support load schedule not yet built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are being built incrementally |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -623,6 +623,48 @@ target range (again matching this discipline's own stated criterion)
 raises a `buildability` flag rather than `code_compliance` — settling/
 fouling risk if too slow, excess pressure drop/noise if too fast, neither
 an immediate safety issue the way exceeding the hard erosional limit is.
+
+The second `calcs/mechanical_piping/` module, `pipe_stress_check.py`,
+answers `pipe_stress_analysis_and_supports`'s "Pipe flexibility/stress
+analysis" `CalculationRequirement`: ASME B31.3's sustained stress (Eq 17)
+and thermal expansion stress range (Eq 1a/13) checks. It deliberately does
+NOT perform the flexibility analysis itself -- deriving the resultant
+moments a piping system's supports/anchors impose at a given point needs a
+full 3D stiffness-matrix solve of the actual routed geometry (CAESAR II or
+equivalent), not something reducible to a formula, the same reason this
+repo doesn't attempt full building-frame structural analysis. It applies
+the same split already established by `beam_column_interaction.py`: the
+governing stress equations themselves are well-documented and embedded
+with full confidence, while the case-specific inputs feeding them --
+there, Annex A/B k-factors; here, resultant moments Ma/Mi/Mo/Mt from an
+external analysis, plus SIFs (B31.3 Appendix D, fitting-geometry-dependent)
+and allowable stresses Sc/Sh (B31.3 Table A-1, material/temperature-
+dependent) -- are required direct inputs. Section modulus IS computed
+internally from OD and wall thickness (standard hollow-cylinder mechanics,
+high confidence, no tables involved) rather than requested as a separate
+input, avoiding a class of user error where a supplied Z doesn't actually
+match the supplied Do/t.
+
+The third `calcs/mechanical_piping/` module,
+`ped_pesr_classification_check.py`, answers `design_standards_and_criteria`'s
+"Piping class/category" `DesignCriterion`. It deliberately does NOT derive
+the PED/PESR category (SEP, I, II, III) -- PED Annex II sets it via four
+*separate* graphical boundary charts (Group 1/2 gas and liquid), each with
+its own PS-vs-DN boundary lines, exactly the kind of easy-to-transpose-
+between-tables numeric detail this repo's "flag, don't guess" discipline
+exists to avoid, and here the stakes are unusually explicit: an incorrect
+category could mean skipping required notified body conformity assessment
+before a system is placed into service, a genuine legal compliance
+failure rather than a design error a reviewer catches downstream. What IS
+computed directly, with high confidence, is the PED Article 2(1) scope
+threshold itself (`PS not exceeding 0.5 bar` is excluded from the
+Directive entirely) -- arguably the single most universally cited figure
+in PED, since it's the literal definition of the equipment the Directive
+applies to, unlike the category boundary charts. Above that threshold, the
+category is a required direct input, and the module does the safe
+downstream bookkeeping: whether notified body conformity assessment/CE-
+UKCA marking applies, plus a caution when the fluid is Group 1 (dangerous)
+that the category must have come from the correct Group 1 table.
 
 ## Design principles
 

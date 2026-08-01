@@ -438,9 +438,49 @@ fouling risk if too slow, excess pressure drop/noise if too fast) — a
 softer signal than exceeding the erosional limit, which raises a critical
 `code_compliance` flag instead.
 
+**Second mechanical piping module**: `calcs/mechanical_piping/pipe_stress_check.py`
+— answers `pipe_stress_analysis_and_supports`'s "Pipe flexibility/stress
+analysis" requirement: ASME B31.3's sustained stress (Eq 17) and thermal
+expansion stress range (Eq 1a/13) checks. Deliberately does NOT perform
+flexibility analysis itself — deriving the resultant moments a piping
+system's supports/anchors impose at a point needs a full 3D stiffness-
+matrix solve of the actual routed geometry (CAESAR II or equivalent), not
+something reducible to a formula, the same reason this repo doesn't
+attempt full building-frame analysis. Instead it takes those resultant
+moments as required direct inputs and applies the well-documented stress
+equations that follow — the same split already established by
+`beam_column_interaction.py` (embed the governing equations, flag the
+case-specific inputs: there k-factors, here resultant moments). SIFs and
+allowable stresses (Sc/Sh) are also required direct inputs (B31.3 Appendix
+D and Table A-1 respectively — fitting-geometry- and material/temperature-
+dependent tabulated data this repo doesn't embed). Section modulus IS
+computed internally from OD/wall thickness (basic hollow-cylinder
+mechanics, high confidence, no tables involved) rather than requested as a
+separate input, reducing the chance of a mismatched Z/Do/t combination.
+
+**Third mechanical piping module**: `calcs/mechanical_piping/ped_pesr_classification_check.py`
+— answers `design_standards_and_criteria`'s "Piping class/category"
+requirement (PED Article 13 / PESR). Deliberately does NOT derive the
+PED/PESR category (SEP, I, II, III) — Annex II sets it via four *separate*
+graphical boundary charts (Group 1/2 × gas/liquid), each with its own
+specific PS-vs-DN boundary lines, exactly the kind of easy-to-transpose-
+between-tables detail this repo avoids embedding, and getting it wrong
+carries real regulatory weight (skipping required notified body
+conformity assessment is a genuine legal compliance failure, not a
+design error a reviewer catches downstream). What IS computed directly,
+with high confidence: the PED Article 2(1) scope threshold itself — `PS
+not exceeding 0.5 bar` is excluded from the Directive entirely, arguably
+the single most consistently cited figure in PED (it's the literal
+definition of what "pressure equipment" the Directive applies to). Above
+that threshold, the category is a required direct input, and the module
+does the safe downstream bookkeeping: whether notified body conformity
+assessment/CE-UKCA marking applies, plus a caution when the fluid is
+Group 1 (dangerous) that the category must come from the correct Group 1
+table, not a Group 2 one.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs, motor starting for
-electrical LV, pipe stress analysis/support loads for mechanical piping)
+electrical LV, support load schedule/remaining mechanical piping calcs)
 plus independent verification of every illustrative value flagged
 throughout the detail passes.
 
@@ -478,6 +518,8 @@ python3 -m calcs.electrical_hv.protection_grading
 python3 -m calcs.electrical_hv.arc_flash_ppe_check
 python3 -m calcs.electrical_hv.substation_earthing_touch_step
 python3 -m calcs.mechanical_piping.line_sizing_velocity_check
+python3 -m calcs.mechanical_piping.pipe_stress_check
+python3 -m calcs.mechanical_piping.ped_pesr_classification_check
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -535,8 +577,10 @@ total-auto/
 │   │   ├── protection_grading.py     # IEC 60255-151 IDMT relay operating time + grading margin check
 │   │   ├── arc_flash_ppe_check.py    # Required PPE arc rating vs practical PPE limit (incident energy is a direct input)
 │   │   └── substation_earthing_touch_step.py  # Sverak grid resistance + IEEE 80 tolerable touch/step voltage (actual mesh/step voltage is a direct input)
-│   └── mechanical_piping/            # FIRST MODULE BUILT — see below
-│       └── line_sizing_velocity_check.py  # Actual velocity vs API RP 14E erosional velocity limit + target range
+│   └── mechanical_piping/            # THREE MODULES BUILT — see below
+│       ├── line_sizing_velocity_check.py  # Actual velocity vs API RP 14E erosional velocity limit + target range
+│       ├── pipe_stress_check.py       # ASME B31.3 sustained stress + thermal expansion stress range check
+│       └── ped_pesr_classification_check.py  # PED Article 2(1) scope threshold + conformity assessment bookkeeping
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
@@ -544,7 +588,7 @@ total-auto/
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
 │   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; five calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance)
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; four calcs wired (transformer sizing, protection grading, HV arc flash PPE, substation earthing/touch-step)
-│   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic); first calc wired (line sizing/velocity)
+│   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic); three calcs wired (line sizing/velocity, pipe stress, PED/PESR classification)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
 │   ├── graph.py                    # Interface() entries -> dependency graph, cycle detection, Mermaid
 │   ├── process_state.py            # Per-project resolution status -> what's unblocked/blocked
@@ -578,6 +622,8 @@ total-auto/
 │   ├── test_hv_arc_flash_ppe_check.py  # Validates required PPE rating and practical-PPE-limit flagging
 │   ├── test_substation_earthing_touch_step.py  # Validates Sverak grid resistance and IEEE 80 tolerable touch/step voltage arithmetic
 │   ├── test_line_sizing_velocity_check.py  # Validates velocity/erosional velocity arithmetic and target-range flagging
+│   ├── test_pipe_stress_check.py   # Validates ASME B31.3 sustained/thermal expansion stress arithmetic
+│   ├── test_ped_pesr_classification_check.py  # Validates PED scope threshold and conformity assessment bookkeeping
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

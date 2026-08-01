@@ -568,6 +568,45 @@ plan, not a user manual.
       Ve=3.86m/s, utilisation 0.917, PASS, within target range) and
       end-to-end in a real browser -- UI result matched the CLI run
       exactly. 333/333 tests passing.
+- [x] Second mechanical piping calc module:
+      `calcs/mechanical_piping/pipe_stress_check.py` -- answers
+      `pipe_stress_analysis_and_supports`'s "Pipe flexibility/stress
+      analysis" `CalculationRequirement`: ASME B31.3 sustained stress
+      (Eq 17) and thermal expansion stress range (Eq 1a/13). Deliberately
+      does NOT perform flexibility analysis -- deriving resultant moments
+      needs a full 3D stiffness-matrix solve (CAESAR II or equivalent),
+      not a formula. Same split as `beam_column_interaction.py`: governing
+      equations embedded with full confidence, case-specific inputs
+      (resultant moments Ma/Mi/Mo/Mt, SIFs, allowable stresses Sc/Sh)
+      required direct inputs. Section modulus computed internally from
+      OD/wall thickness (basic mechanics, no tables). 9 new tests,
+      verified against an independently re-derived reference calculation
+      (Do=114.3mm, t=6.02mm, P=2.0MPa, Ma=500N.m -> SL=20.2MPa; Mi=800,
+      Mo=600, Mt=300N.m -> SE=32.7MPa, SA=305MPa; governing utilisation
+      0.183, PASS) and end-to-end in a real browser -- UI result matched
+      the CLI run exactly. Also confirmed a genuine edge case in Eq 1b (an
+      extreme sustained moment can drive the allowable stress range SA
+      negative, correctly reported as infinite thermal utilisation, not a
+      bug). 342/342 tests passing.
+- [x] Third mechanical piping calc module:
+      `calcs/mechanical_piping/ped_pesr_classification_check.py` --
+      answers `design_standards_and_criteria`'s "Piping class/category"
+      `DesignCriterion` (PED Article 13 / PESR). Deliberately does NOT
+      derive the PED/PESR category -- Annex II's four separate graphical
+      boundary charts (Group 1/2 gas/liquid) are exactly the kind of
+      easy-to-transpose numeric detail this repo avoids embedding, and
+      getting it wrong here carries real regulatory weight (skipping
+      required notified body assessment is a legal compliance failure).
+      What IS computed directly: the PED Article 2(1) scope threshold
+      (PS <= 0.5 bar excluded entirely) -- the single most universally
+      cited PED figure, the literal scope definition. Above that, category
+      is a required direct input, with downstream bookkeeping (notified
+      body/CE-UKCA marking requirement, a Group 1 fluid caution). 10 new
+      tests, verified against manual classification (16 bar, Category II
+      -> in scope, notified body required, critical flag; SEP -> no flag)
+      and end-to-end in a real browser (verified the SEP/Group 1 case,
+      avoiding the known Streamlit dropdown-click limitation, matching two
+      existing pytest cases exactly) -- 352/352 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -743,15 +782,20 @@ mechanical piping**.
       supplied actual mesh/step voltage -- splits its scope by confidence
       tier within a single module, embedding the formula, flagging the
       geometry-dependent actual values), and mechanical_piping has its
-      first (`line_sizing_velocity_check.py`, actual velocity vs the API
-      RP 14E erosional velocity limit and a target velocity range --
-      pressure drop deliberately left out, see that module's docstring)
-      -- see Milestone 1 above for all.
+      first three (`line_sizing_velocity_check.py`, actual velocity vs the
+      API RP 14E erosional velocity limit and a target velocity range --
+      pressure drop deliberately left out; `pipe_stress_check.py`, ASME
+      B31.3 sustained stress + thermal expansion stress range check from
+      externally-supplied resultant moments -- does not perform
+      flexibility analysis; and `ped_pesr_classification_check.py`, PED
+      Article 2(1) scope threshold computed directly, conformity
+      assessment bookkeeping from an externally-determined category -- see
+      those modules' docstrings) -- see Milestone 1 above for all.
       Remaining: block tearing, base plate bending, civils attenuation
       volume sizing (open item above -- needs the FSR/FEH rainfall model)
       and highways/pavement calcs, electrical_lv's motor starting (skipped
-      per project direction for now), pipe stress analysis/support loads
-      and every other named calc in mechanical_piping.
+      per project direction for now), and mechanical_piping's support load
+      schedule.
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current
