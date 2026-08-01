@@ -106,13 +106,19 @@ supports/structural interface/hazardous area interface — that exists
 specifically to force the same equipment-vs-classification sequencing check
 already flagged in the LV electrical module, at the piping/electrical boundary.
 
-For all five, criteria, assumptions, and deliverables are deliberately left
-empty — this is architecture, not detail (see docs/examples/ for a generated
-look at each current output shape). This completes Milestone 1a's
-architecture pass across the originally agreed discipline order; the detail
-pass (criteria/assumptions/deliverables per section, and the corresponding
-`calcs/<discipline>/` modules) is the next piece of work, deferred per the
-project owner's direction.
+For all five, criteria, assumptions, and deliverables were initially left
+empty — architecture before detail (see docs/examples/ for a generated look
+at each current output shape). The detail pass is now under way, one
+discipline at a time: **`civils.py` is the first to have criteria,
+assumptions, exclusions, and deliverables populated** (survey tolerances,
+SuDS discharge/climate-change criteria, flood freeboard, pavement design
+life, retaining wall design working life, etc.) — same "verify before real
+use" caveat as its standards list, since these are illustrative UK-practice
+starting values, not confirmed project- or client-specific figures.
+Structural, LV electrical, HV electrical, and mechanical piping still have
+their architecture-pass skeleton only, pending the same detail treatment.
+The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are not
+yet built for any discipline.
 
 ## Design principles
 

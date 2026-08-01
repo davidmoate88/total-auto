@@ -27,20 +27,22 @@ standard geotechnical literature/training knowledge, not by reading the purchase
 BS EN 1997-1 standard text directly, and should be checked against the current
 standard and National Annex before use.
 
-**Milestone 1a (complete):** worked discipline-by-discipline through a "basis of
-design" (BoD) — the document stating scope, standards, criteria, and interfaces for
-a discipline, distinct from a `calcs/` module that performs one specific calculation.
-All five agreed disciplines are built as skeletons: `basis_of_design/civils.py`,
-`structural.py` (scoped to industrial access steelwork), `electrical_lv.py`
-(plant/industrial LV distribution including hazardous area classification),
-`electrical_hv.py` (incoming supply/substations/transformers, kept generic across
-common HV voltage classes), and `mechanical_piping.py` (process piping, governing
-code kept generic — both ASME B31.3 and BS EN 13480 listed). Each also carries
-risk flags (`core/risk.py`) wherever a permanent design implies a distinct,
-riskier construction-stage or compliance-sequencing condition. The architecture
-pass is now done for all five; the detail pass (criteria/assumptions/deliverables,
-and the corresponding `calcs/<discipline>/` modules) is next. See `docs/examples/`
-for a generated look at each discipline's current output.
+**Milestone 1a (architecture pass complete, detail pass in progress):** worked
+discipline-by-discipline through a "basis of design" (BoD) — the document stating
+scope, standards, criteria, and interfaces for a discipline, distinct from a `calcs/`
+module that performs one specific calculation. All five agreed disciplines are built
+as skeletons: `basis_of_design/civils.py`, `structural.py` (scoped to industrial
+access steelwork), `electrical_lv.py` (plant/industrial LV distribution including
+hazardous area classification), `electrical_hv.py` (incoming supply/substations/
+transformers, kept generic across common HV voltage classes), and
+`mechanical_piping.py` (process piping, governing code kept generic — both ASME
+B31.3 and BS EN 13480 listed). Each also carries risk flags (`core/risk.py`)
+wherever a permanent design implies a distinct, riskier construction-stage or
+compliance-sequencing condition. The detail pass — filling in design criteria,
+assumptions, exclusions, and deliverables per section — is now under way,
+starting with **civils** (done); structural, LV electrical, HV electrical, and
+mechanical piping still have their architecture-pass skeleton only. See
+`docs/examples/` for a generated look at each discipline's current output.
 
 ## Getting started
 

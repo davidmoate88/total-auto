@@ -42,7 +42,10 @@ def render_basis_of_design(discipline_name: str, sections: dict[str, BasisOfDesi
         if section.criteria:
             lines.append("**Design criteria:**\n")
             for c in section.criteria:
-                val = f"{c.value} {c.unit}".strip() if c.value else "(TBC)"
+                if c.value:
+                    val = f"{c.value} {c.unit}" if c.unit else c.value
+                else:
+                    val = "(TBC)"
                 note = f" — {c.notes}" if c.notes else ""
                 lines.append(f"- {c.name}: {val}{note}")
             lines.append("")

@@ -103,11 +103,24 @@ mechanical piping**.
 - [ ] Multi-storey/occupied-building structural elements (floor vibration,
       lateral stability/sway, roof structure, fire engineering) — parked per
       project owner's direction; revisit if a future project needs them.
-- [ ] Detail pass on all five disciplines (fill in criteria/assumptions/
-      deliverables per section, build the corresponding calcs/ modules) —
-      deferred to Claude Code per the project owner's direction. Milestone 1a's
-      architecture pass is now complete across civils, structural, LV
-      electrical, HV electrical, and mechanical piping.
+- [x] Detail pass, civils — every section now carries illustrative design
+      criteria (survey tolerances, discharge rate/climate change allowance,
+      freeboard, pavement design life, etc.), working assumptions, exclusions,
+      and deliverables, on top of the architecture-pass scope/standards/
+      interfaces. Values are drawn from common UK practice, not confirmed
+      project-specific figures — same "verify before real use" caveat as the
+      standards lists, called out explicitly in `civils.py`'s docstring.
+      Fixed a real rendering bug found while generating the updated example
+      doc: a `DesignCriterion` with a value but no unit rendered the literal
+      string `"None"` after it (`render.py`'s criteria formatting assumed
+      `unit` was always set).
+- [ ] Detail pass on structural, LV electrical, HV electrical, and mechanical
+      piping (fill in criteria/assumptions/exclusions/deliverables per
+      section) — same pattern as civils, one discipline at a time.
+- [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
+      each section's `calculations_required` entries — deferred to Claude
+      Code per the project owner's direction; not started for any discipline
+      beyond geotechnical.
 
 ## Milestone 2 — Meeting minutes → actions
 

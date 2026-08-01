@@ -58,6 +58,33 @@ def test_civils_skeleton_sections_all_currently_carry_some_content():
     assert all(s.is_populated() for s in bod.sections().values())
 
 
+def test_civils_detail_pass_populates_criteria_assumptions_exclusions_and_deliverables():
+    # 2nd-pass check: every civils section now carries actual design criteria,
+    # working assumptions, exclusions, and deliverables -- not just scope/
+    # standards/interfaces from the architecture pass.
+    bod = build_civils_bod_skeleton()
+    for name, section in bod.sections().items():
+        assert section.criteria, f"{name} missing criteria"
+        assert section.assumptions, f"{name} missing assumptions"
+        assert section.exclusions, f"{name} missing exclusions"
+        assert section.deliverables, f"{name} missing deliverables"
+
+
+def test_civils_flood_risk_criterion_matches_agreed_freeboard_convention():
+    bod = build_civils_bod_skeleton()
+    names = {c.name for c in bod.flood_risk.criteria}
+    assert "Finished floor level freeboard" in names
+
+
+def test_civils_surface_water_criteria_follow_suds_hierarchy():
+    bod = build_civils_bod_skeleton()
+    hierarchy_criterion = next(
+        (c for c in bod.surface_water_drainage_suds.criteria if c.name == "SuDS management train priority"), None
+    )
+    assert hierarchy_criterion is not None
+    assert "infiltration" in hierarchy_criterion.value.lower()
+
+
 def test_structural_skeleton_has_all_nine_sections():
     bod = build_structural_bod_skeleton()
     assert set(bod.sections().keys()) == set(STRUCTURAL_SECTION_NAMES)
