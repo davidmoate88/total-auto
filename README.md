@@ -27,6 +27,13 @@ standard geotechnical literature/training knowledge, not by reading the purchase
 BS EN 1997-1 standard text directly, and should be checked against the current
 standard and National Annex before use.
 
+**Milestone 1a (current):** working discipline-by-discipline through a "basis of
+design" (BoD) — the document stating scope, standards, criteria, and interfaces for
+a discipline, distinct from a `calcs/` module that performs one specific calculation.
+Civils is built as a 9-section skeleton (`basis_of_design/civils.py`); structural, LV
+electrical, HV electrical, and mechanical piping are next, in that agreed order. See
+`docs/examples/civils_basis_of_design_skeleton.md` for a generated look at the output.
+
 ## Getting started
 
 ```bash
@@ -63,6 +70,10 @@ total-auto/
 │   │       └── text_input.py       # Lenient line-based paste parser (not free-form NLP)
 │   ├── structural/                  # PLACEHOLDER — README + pattern only, no modules yet
 │   └── civil/                       # PLACEHOLDER — README + pattern only, no modules yet
+├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
+│   ├── core.py                     # Shared BasisOfDesignSection shape
+│   ├── render.py                   # Renders any discipline's sections to markdown
+│   └── civils.py                   # BUILT — 9-section civils skeleton
 ├── portfolio/                       # DATA MODEL ONLY — Project/Portfolio contract, no logic
 ├── comms/
 │   ├── meeting_minutes/             # DATA MODEL + interface stub (extract_minutes())
