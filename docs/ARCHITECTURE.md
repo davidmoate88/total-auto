@@ -109,16 +109,20 @@ already flagged in the LV electrical module, at the piping/electrical boundary.
 For all five, criteria, assumptions, and deliverables were initially left
 empty — architecture before detail (see docs/examples/ for a generated look
 at each current output shape). The detail pass is now under way, one
-discipline at a time: **`civils.py` is the first to have criteria,
-assumptions, exclusions, and deliverables populated** (survey tolerances,
-SuDS discharge/climate-change criteria, flood freeboard, pavement design
-life, retaining wall design working life, etc.) — same "verify before real
-use" caveat as its standards list, since these are illustrative UK-practice
-starting values, not confirmed project- or client-specific figures.
-Structural, LV electrical, HV electrical, and mechanical piping still have
-their architecture-pass skeleton only, pending the same detail treatment.
-The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are not
-yet built for any discipline.
+discipline at a time: **`civils.py` and `structural.py` now have criteria,
+assumptions, exclusions, and deliverables populated.** Civils covers survey
+tolerances, SuDS discharge/climate-change criteria, flood freeboard, pavement
+design life, retaining wall design working life, etc. Structural covers
+design working life/consequence class, platform loading and minimum walkway
+width, stair/ladder pitch, guard-rail height/load/gap limits, notional
+horizontal robustness load, expansion joint spacing and galvanizing coating
+thickness, etc. — same "verify before real use" caveat as their standards
+lists in both cases, since these are illustrative UK-practice starting
+values, not confirmed project- or client-specific figures. LV electrical, HV
+electrical, and mechanical piping still have their architecture-pass
+skeleton only, pending the same detail treatment. The corresponding
+`calcs/<discipline>/` modules (beyond geotechnical) are not yet built for any
+discipline.
 
 ## Design principles
 

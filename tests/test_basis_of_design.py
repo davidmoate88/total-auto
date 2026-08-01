@@ -114,6 +114,32 @@ def test_structural_render_includes_project_reference_and_all_section_names():
         assert section.name in report
 
 
+def test_structural_detail_pass_populates_criteria_assumptions_exclusions_and_deliverables():
+    # 2nd-pass check: every structural section now carries actual design
+    # criteria, working assumptions, exclusions, and deliverables -- not just
+    # scope/standards/interfaces from the architecture pass.
+    bod = build_structural_bod_skeleton()
+    for name, section in bod.sections().items():
+        assert section.criteria, f"{name} missing criteria"
+        assert section.assumptions, f"{name} missing assumptions"
+        assert section.exclusions, f"{name} missing exclusions"
+        assert section.deliverables, f"{name} missing deliverables"
+
+
+def test_structural_scope_still_excludes_multi_storey_after_detail_pass():
+    # The scope pivot (industrial access steelwork, not occupied multi-storey
+    # buildings) must survive the detail pass, not just the architecture pass.
+    bod = build_structural_bod_skeleton()
+    criteria_section = bod.design_standards_and_criteria
+    assert any("multi-storey" in e.lower() or "parked" in e.lower() for e in criteria_section.exclusions)
+
+
+def test_structural_platforms_criteria_include_minimum_walkway_width():
+    bod = build_structural_bod_skeleton()
+    names = {c.name for c in bod.platforms_and_walkways.criteria}
+    assert "Minimum clear walkway width" in names
+
+
 def test_civils_flags_temporary_works_risk_on_earthworks_and_retaining_structures():
     bod = build_civils_bod_skeleton()
     assert any(f.category == "temporary_works" for f in bod.earthworks_and_remediation.risk_flags)

@@ -39,8 +39,8 @@ transformers, kept generic across common HV voltage classes), and
 B31.3 and BS EN 13480 listed). Each also carries risk flags (`core/risk.py`)
 wherever a permanent design implies a distinct, riskier construction-stage or
 compliance-sequencing condition. The detail pass — filling in design criteria,
-assumptions, exclusions, and deliverables per section — is now under way,
-starting with **civils** (done); structural, LV electrical, HV electrical, and
+assumptions, exclusions, and deliverables per section — is now under way:
+**civils and structural are done**; LV electrical, HV electrical, and
 mechanical piping still have their architecture-pass skeleton only. See
 `docs/examples/` for a generated look at each discipline's current output.
 

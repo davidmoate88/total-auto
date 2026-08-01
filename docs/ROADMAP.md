@@ -114,9 +114,20 @@ mechanical piping**.
       doc: a `DesignCriterion` with a value but no unit rendered the literal
       string `"None"` after it (`render.py`'s criteria formatting assumed
       `unit` was always set).
-- [ ] Detail pass on structural, LV electrical, HV electrical, and mechanical
-      piping (fill in criteria/assumptions/exclusions/deliverables per
-      section) — same pattern as civils, one discipline at a time.
+- [x] Detail pass, structural — every section now carries illustrative design
+      criteria (design working life/consequence class, deflection limits and
+      steel grade, platform loading and minimum walkway width, stair/ladder
+      pitch, guard-rail height/load/gap limits, notional horizontal
+      robustness load, expansion joint spacing and galvanizing thickness,
+      etc.), working assumptions, exclusions, and deliverables, on top of the
+      architecture-pass scope/standards/interfaces. Same illustrative-values
+      caveat as civils — confirmed in `structural.py`'s updated docstring.
+      The multi-storey/occupied-building exclusion (the original scope pivot)
+      is retained and explicitly re-tested to confirm it survives the detail
+      pass, not just the architecture pass.
+- [ ] Detail pass on LV electrical, HV electrical, and mechanical piping (fill
+      in criteria/assumptions/exclusions/deliverables per section) — same
+      pattern as civils and structural, one discipline at a time.
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
       Code per the project owner's direction; not started for any discipline
