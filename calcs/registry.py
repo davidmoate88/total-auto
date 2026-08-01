@@ -5,6 +5,7 @@ name — adding a new discipline/calc means writing the module and adding one
 line here.
 """
 
+from calcs.civil.foul_drainage import MODULE as CIVIL_FOUL_DRAINAGE
 from calcs.civil.lateral_earth_pressure import MODULE as CIVIL_LATERAL_EARTH_PRESSURE
 from calcs.civil.retaining_wall_stability import MODULE as CIVIL_RETAINING_WALL_STABILITY
 from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACITY
@@ -24,6 +25,7 @@ CALC_REGISTRY: list[CalcModule] = [
     STRUCTURAL_DECK_GRATING,
     CIVIL_LATERAL_EARTH_PRESSURE,
     CIVIL_RETAINING_WALL_STABILITY,
+    CIVIL_FOUL_DRAINAGE,
 ]
 
 

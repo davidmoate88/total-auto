@@ -147,9 +147,19 @@ two `calculations_required` entries:
 See `docs/ARCHITECTURE.md`'s "Civils calcs and cross-domain DA1 reuse"
 section for the full picture.
 
+**Third civils module**: `calcs/civil/foul_drainage.py` — population-based
+peak foul flow and Manning's-equation full-bore pipe capacity/self-cleansing
+velocity check, answering `foul_drainage`'s "Foul flow calculation"
+requirement. Unlike the retaining-wall pair, this is NOT Eurocode-based — UK
+foul sewer design follows Sewers for Adoption / water company guidance.
+Manning's equation is a simplified/preliminary substitute for the
+Colebrook-White method formally required for adoptable sewer design; the
+peak flow factor and per-capita flow rate are direct inputs with
+illustrative defaults. See the module docstring.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
-base plate bending, the beam-column interaction check, drainage/earthworks
-civils calcs, electrical/mechanical piping calcs) plus independent verification of
+base plate bending, the beam-column interaction check, surface water/SuDS
+and earthworks civils calcs, electrical/mechanical piping calcs) plus independent verification of
 every illustrative value flagged throughout the detail passes.
 
 ## Getting started
@@ -171,6 +181,7 @@ python3 -m calcs.structural.base_plate
 python3 -m calcs.structural.deck_grating
 python3 -m calcs.civil.lateral_earth_pressure
 python3 -m calcs.civil.retaining_wall_stability
+python3 -m calcs.civil.foul_drainage
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -209,9 +220,10 @@ total-auto/
 │   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
 │   │   ├── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
 │   │   └── deck_grating.py         # BS EN 1991-1-1 loads, EN 1993-1-1 elastic bearing-bar check, UK NA
-│   └── civil/                       # TWO MODULES BUILT — see below
+│   └── civil/                       # THREE MODULES BUILT — see below
 │       ├── lateral_earth_pressure.py   # Rankine active earth pressure, EN 1997-1 UK NA DA1
-│       └── retaining_wall_stability.py # Sliding/overturning/bearing check, EN 1997-1 UK NA DA1
+│       ├── retaining_wall_stability.py # Sliding/overturning/bearing check, EN 1997-1 UK NA DA1
+│       └── foul_drainage.py            # Peak foul flow + Manning's equation pipe capacity check
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
@@ -238,6 +250,7 @@ total-auto/
 │   ├── test_deck_grating.py        # Validates bearing bar tributary load, stress, and deflection arithmetic
 │   ├── test_lateral_earth_pressure.py   # Validates Rankine Ka/Kp and active thrust decomposition
 │   ├── test_retaining_wall_stability.py # Validates sliding/overturning/bearing arithmetic
+│   ├── test_foul_drainage.py       # Validates peak flow generation and Manning's equation arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

@@ -165,7 +165,11 @@ def build_civils_bod_skeleton(project_reference: Optional[str] = None) -> Civils
                 Standard(code="Building Regulations Part H", notes="England & Wales — confirm applicability by jurisdiction."),
             ],
             calculations_required=[
-                CalculationRequirement(name="Foul flow calculation", description="Peak foul flow from occupancy/use, pipe sizing."),
+                CalculationRequirement(
+                    name="Foul flow calculation", description="Peak foul flow from occupancy/use, pipe sizing.",
+                    calc_module_reference="civil_foul_drainage_flow",
+                    standard_reference="Sewers for Adoption",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Minimum self-cleansing velocity", value="0.75", unit="m/s", notes="Typical Sewers for Adoption / Building Regs criterion at design flow."),

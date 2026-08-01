@@ -184,6 +184,26 @@ plan, not a user manual.
       UI result 0.8027 matched the CLI run 0.803 exactly) and wired into
       `basis_of_design/civils.py` via `calc_module_reference`. 186/186 tests
       passing.
+- [x] Third civils calc module: `calcs/civil/foul_drainage.py` — population/
+      occupancy-based peak foul flow and Manning's-equation full-bore pipe
+      capacity/self-cleansing velocity check, answering `foul_drainage`'s
+      "Foul flow calculation" `CalculationRequirement`. The first civils
+      module that is genuinely NOT Eurocode-based — UK foul sewer design
+      follows Sewers for Adoption / water company Design and Construction
+      Guidance instead, matching `calcs/civil/README.md`'s own warning that
+      drainage sizing varies by sub-discipline more than structural/
+      geotechnical does. Uses Manning's equation as an explicitly-flagged
+      simplified/preliminary substitute for the Colebrook-White method
+      formally required for adoptable UK sewer design; the peak flow factor
+      (default 6x DWF) and per-capita flow rate are direct inputs with
+      illustrative defaults rather than derived/tabulated values, following
+      this session's established "flag, don't guess" discipline. Checks
+      against the discipline's own BoD-stated minimum self-cleansing
+      velocity (0.75 m/s). 9 new tests, arithmetic verified by hand
+      (population->DWF->peak flow, and the Manning's velocity/capacity
+      formula independently re-derived). Verified end-to-end in a real
+      browser -- UI utilisation (0.1176) matched the CLI run exactly.
+      195/195 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -323,13 +343,14 @@ mechanical piping**.
       Code per the project owner's direction. **In progress**: structural has
       five modules built and wired (`beam_capacity.py`, `column_capacity.py`,
       `bolted_shear_connection.py`, `base_plate.py`, `deck_grating.py`), and
-      civils has its first two (`lateral_earth_pressure.py`,
-      `retaining_wall_stability.py`) -- see Milestone 1 above for both.
+      civils has its first three (`lateral_earth_pressure.py`,
+      `retaining_wall_stability.py`, `foul_drainage.py`) -- see Milestone 1
+      above for all.
       Remaining: the beam-column combined bending+axial interaction, block
-      tearing, base plate bending, civils drainage/earthworks/highways
-      calcs, and all calcs for electrical_lv/electrical_hv/mechanical_piping.
-      Independent verification of every "illustrative value" flagged
-      throughout the detail passes against actual current
+      tearing, base plate bending, civils surface water/SuDS/earthworks/
+      highways calcs, and all calcs for electrical_lv/electrical_hv/
+      mechanical_piping. Independent verification of every "illustrative
+      value" flagged throughout the detail passes against actual current
       standard texts/project requirements is still outstanding for all
       disciplines.
 
