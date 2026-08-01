@@ -6,6 +6,7 @@ line here.
 """
 
 from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACITY
+from calcs.structural.base_plate import MODULE as STRUCTURAL_BASE_PLATE
 from calcs.structural.beam_capacity import MODULE as STRUCTURAL_BEAM_CAPACITY
 from calcs.structural.bolted_shear_connection import MODULE as STRUCTURAL_BOLTED_SHEAR_CONNECTION
 from calcs.structural.column_capacity import MODULE as STRUCTURAL_COLUMN_CAPACITY
@@ -16,6 +17,7 @@ CALC_REGISTRY: list[CalcModule] = [
     STRUCTURAL_BEAM_CAPACITY,
     STRUCTURAL_COLUMN_CAPACITY,
     STRUCTURAL_BOLTED_SHEAR_CONNECTION,
+    STRUCTURAL_BASE_PLATE,
 ]
 
 

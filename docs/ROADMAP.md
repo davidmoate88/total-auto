@@ -88,6 +88,21 @@ plan, not a user manual.
       default-plus-override pattern used elsewhere. 15 new tests, arithmetic
       verified by hand against the module's own documented alpha_b/k1
       formulae. Not yet wired into the Streamlit UI.
+- [x] Fourth structural calc module: `calcs/structural/base_plate.py` —
+      concrete/grout bearing utilisation under a concentric column base
+      plate, and HD bolt tension utilisation under net uplift, to EN 1993-1-8
+      (UK NA), answering `substructure_and_foundations`'s "Base plate /
+      holding-down bolt design" `CalculationRequirement` — the foundation
+      end of the load path `column_capacity.py` checks the member for. Same
+      "required direct input over guessed formula" discipline as the
+      connection module: EN 1993-1-8 SS6.2.5's T-stub-in-compression
+      effective-area geometry for an I-section footprint was judged not
+      reconstructible with sufficient confidence from memory, so
+      `base_plate_effective_area_mm2` and `design_bearing_strength_mpa` are
+      both required direct inputs rather than derived. The HD bolt tension
+      check (Table 3.4, Ft,Rd=0.9*fub*As/gamma_M2) is higher-confidence and
+      fully implemented. Base plate bending itself is not checked. 10 new
+      tests, arithmetic verified by hand. Not yet wired into the Streamlit UI.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -225,10 +240,10 @@ mechanical piping**.
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
       Code per the project owner's direction. **In progress**: structural has
-      three modules built and wired (`beam_capacity.py`, `column_capacity.py`,
-      `bolted_shear_connection.py`, see Milestone 1 above).
+      four modules built and wired (`beam_capacity.py`, `column_capacity.py`,
+      `bolted_shear_connection.py`, `base_plate.py`, see Milestone 1 above).
       Remaining: the beam-column combined bending+axial interaction, block
-      tearing, base plate/HD bolt design, and all calcs for
+      tearing, base plate bending, and all calcs for
       civils/electrical_lv/electrical_hv/mechanical_piping. Independent
       verification of every "illustrative value" flagged throughout the
       detail passes against actual current

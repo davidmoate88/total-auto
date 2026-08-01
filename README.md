@@ -84,10 +84,18 @@ structural so far:
 - `calcs/structural/bolted_shear_connection.py` — bolt shear and bearing
   resistance for a concentrically-loaded bolt group, to EN 1993-1-8 (UK NA).
   No block tearing, no connected-ply capacity, no moment/eccentric
-  connections. Notably lower-confidence than the other three modules on one
+  connections. Notably lower-confidence than the beam/column modules on one
   specific constant (Table 3.4's alpha_v) — flagged prominently, and made a
   required direct input rather than a guessed default; see the module
   docstring.
+- `calcs/structural/base_plate.py` — concrete/grout bearing utilisation under
+  a concentric column base plate, and HD bolt tension utilisation under net
+  uplift, to EN 1993-1-8 (UK NA). Effective bearing area and bearing strength
+  are direct inputs rather than derived (same "flag, don't guess" reasoning
+  as the connection module's alpha_v, applied to the base-plate effective-area
+  geometry this time); ties the load path back from `column_capacity.py`'s
+  design axial load to the geotechnical bearing resistance interface already
+  declared in this section's BoD.
 
 Beam and column together cover `primary_steel_frame`'s "Beam/column member
 capacity checks" as two separate `CalculationRequirement` entries in
@@ -96,12 +104,12 @@ first real use of that field) — but a member carrying **both** bending and
 axial load at once (a true beam-column) needs the EN 1993-1-1 SS6.3.3
 interaction check, which neither module performs; that's flagged explicitly in
 both modules' docstrings/warnings rather than approximated. The bolted
-connection module covers "Connection design" similarly. None of the three are
-yet wired into the Streamlit UI (`app.py` still only serves the geotechnical
-tools).
+connection and base plate modules cover "Connection design" and "Base plate /
+holding-down bolt design" similarly. None of the four are yet wired into the
+Streamlit UI (`app.py` still only serves the geotechnical tools).
 
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
-base plate/HD bolt design, the beam-column interaction check,
+base plate bending, the beam-column interaction check,
 civils/electrical/mechanical piping calcs) plus independent verification of
 every illustrative value flagged throughout the detail passes.
 
@@ -120,6 +128,7 @@ python3 -m calcs.geotechnical.bearing_capacity
 python3 -m calcs.structural.beam_capacity
 python3 -m calcs.structural.column_capacity
 python3 -m calcs.structural.bolted_shear_connection
+python3 -m calcs.structural.base_plate
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -152,10 +161,11 @@ total-auto/
 │   │       ├── correlations.py     # SPT/CPT -> phi'/cu empirical correlations
 │   │       ├── ground_model.py     # Pools data per stratum -> characteristic design params
 │   │       └── text_input.py       # Lenient line-based paste parser (not free-form NLP)
-│   ├── structural/                  # THREE MODULES BUILT — see below
+│   ├── structural/                  # FOUR MODULES BUILT — see below
 │   │   ├── beam_capacity.py        # EN 1993-1-1 simply-supported beam bending/shear/deflection check, UK NA
 │   │   ├── column_capacity.py      # EN 1993-1-1 axial buckling resistance check (both axes), UK NA
-│   │   └── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
+│   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
+│   │   └── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
 │   └── civil/                       # PLACEHOLDER — README + pattern only, no modules yet
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
@@ -179,6 +189,7 @@ total-auto/
 │   ├── test_beam_capacity.py       # Validates EN 1993-1-1 classification, Mc,Rd/Vpl,Rd, deflection
 │   ├── test_column_capacity.py     # Validates EN 1993-1-1 classification, Nc,Rd/Nb,Rd, buckling curves
 │   ├── test_bolted_shear_connection.py  # Validates EN 1993-1-8 shear/bearing resistance arithmetic
+│   ├── test_base_plate.py          # Validates EN 1993-1-8 base plate bearing / HD bolt tension arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

@@ -133,7 +133,11 @@ def build_structural_bod_skeleton(project_reference: Optional[str] = None) -> St
                 Interface(with_discipline="geotechnical", description="Bearing resistance for platform/walkway support foundations — see calcs/geotechnical/."),
             ],
             calculations_required=[
-                CalculationRequirement(name="Base plate / holding-down bolt design", standard_reference="BS EN 1993-1-8"),
+                CalculationRequirement(
+                    name="Base plate / holding-down bolt design", standard_reference="BS EN 1993-1-8",
+                    calc_module_reference="structural_base_plate_ec3",
+                    description="Concrete bearing + HD bolt tension under uplift, calcs/structural/base_plate.py. Effective bearing area and bearing strength are direct inputs, not derived -- see that module's docstring.",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Minimum founding depth", value="to be confirmed from ground model", notes="Set from calcs/geotechnical/ characteristic parameters and frost depth once the ground model exists for the site."),
