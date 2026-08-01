@@ -122,6 +122,23 @@ plan, not a user manual.
       section for the full mechanism and trade-off (a flat auto-generated
       form per module, replacing the original tab's hand-laid-out columns/
       expanders).
+- [x] Fifth structural calc module: `calcs/structural/deck_grating.py` — the
+      first `platforms_and_walkways` module, answering "Deck/grating loading
+      and deflection check". Models grating as bearing bars spanning
+      simply-supported between primary supports, each picking up a tributary
+      width from the panel's BS EN 1991-1-1 imposed UDL/point load (defaults
+      match the platforms_and_walkways BoD criteria: 5.0 kN/m², 1.5 kN),
+      checked via an ELASTIC stress method (no cross-section classification/
+      plastic modulus — the right method for thin flat bearing bars, and
+      deliberately distinct from `beam_capacity.py`'s classification-based
+      approach for rolled I/H sections). Shear and the concentrated load's
+      spread across bearing bars are direct inputs/simplifications, flagged
+      rather than derived. Imports `STEEL_YOUNGS_MODULUS_MPA` and the fy
+      lookup from `beam_capacity.py` rather than duplicating them. 11 new
+      tests, verified against an idealised rectangular bar section (Wel, I
+      computed directly from t/d, same approach as the other modules'
+      idealised I-sections). Verified working end-to-end in a real browser
+      (governing utilisation matched the CLI run exactly: 0.7273 vs 0.727).
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text

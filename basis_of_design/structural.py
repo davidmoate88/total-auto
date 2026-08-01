@@ -232,7 +232,11 @@ def build_structural_bod_skeleton(project_reference: Optional[str] = None) -> St
                 Standard(code="BS 4592", notes="Industrial type flooring, walkways and stair treads (grating/chequer plate specification) — confirm current part/edition."),
             ],
             calculations_required=[
-                CalculationRequirement(name="Deck/grating loading and deflection check", standard_reference="BS EN 1991-1-1"),
+                CalculationRequirement(
+                    name="Deck/grating loading and deflection check", standard_reference="BS EN 1991-1-1",
+                    calc_module_reference="structural_deck_grating_ec3",
+                    description="Bearing bar elastic stress/deflection check, calcs/structural/deck_grating.py. Shear and load-spreading across bars are not derived -- see that module's docstring.",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Minimum clear walkway width", value="600", unit="mm", notes="BS EN ISO 14122-2 minimum for a walkway — confirm exact figure and whether a wider width applies for maintenance access/escape route requirements."),

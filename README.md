@@ -106,6 +106,15 @@ interaction check, which neither module performs; that's flagged explicitly in
 both modules' docstrings/warnings rather than approximated. The bolted
 connection and base plate modules cover "Connection design" and "Base plate /
 holding-down bolt design" similarly.
+- `calcs/structural/deck_grating.py` — the first `platforms_and_walkways`
+  module: elastic bending stress and deflection check for a grating/decking
+  bearing bar spanning between primary supports, to BS EN 1991-1-1 imposed
+  loads (defaulting to the platforms_and_walkways BoD criteria: 5.0 kN/m² UDL,
+  1.5 kN concentrated load) checked via an EN 1993-1-1 elastic stress method
+  (not the classification-based method `beam_capacity.py` uses — appropriate
+  for thin flat bearing bars, not rolled I/H sections). Shear and the
+  concentrated load's spread across bearing bars are not derived — see the
+  module docstring.
 
 **All five `calcs/` modules are now wired into the Streamlit UI.** `app.py` no
 longer hand-lays-out a form per module — it discovers every module in
@@ -140,6 +149,7 @@ python3 -m calcs.structural.beam_capacity
 python3 -m calcs.structural.column_capacity
 python3 -m calcs.structural.bolted_shear_connection
 python3 -m calcs.structural.base_plate
+python3 -m calcs.structural.deck_grating
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -172,11 +182,12 @@ total-auto/
 │   │       ├── correlations.py     # SPT/CPT -> phi'/cu empirical correlations
 │   │       ├── ground_model.py     # Pools data per stratum -> characteristic design params
 │   │       └── text_input.py       # Lenient line-based paste parser (not free-form NLP)
-│   ├── structural/                  # FOUR MODULES BUILT — see below
+│   ├── structural/                  # FIVE MODULES BUILT — see below
 │   │   ├── beam_capacity.py        # EN 1993-1-1 simply-supported beam bending/shear/deflection check, UK NA
 │   │   ├── column_capacity.py      # EN 1993-1-1 axial buckling resistance check (both axes), UK NA
 │   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
-│   │   └── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
+│   │   ├── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
+│   │   └── deck_grating.py         # BS EN 1991-1-1 loads, EN 1993-1-1 elastic bearing-bar check, UK NA
 │   └── civil/                       # PLACEHOLDER — README + pattern only, no modules yet
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
@@ -201,6 +212,7 @@ total-auto/
 │   ├── test_column_capacity.py     # Validates EN 1993-1-1 classification, Nc,Rd/Nb,Rd, buckling curves
 │   ├── test_bolted_shear_connection.py  # Validates EN 1993-1-8 shear/bearing resistance arithmetic
 │   ├── test_base_plate.py          # Validates EN 1993-1-8 base plate bearing / HD bolt tension arithmetic
+│   ├── test_deck_grating.py        # Validates bearing bar tributary load, stress, and deflection arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

@@ -10,6 +10,7 @@ from calcs.structural.base_plate import MODULE as STRUCTURAL_BASE_PLATE
 from calcs.structural.beam_capacity import MODULE as STRUCTURAL_BEAM_CAPACITY
 from calcs.structural.bolted_shear_connection import MODULE as STRUCTURAL_BOLTED_SHEAR_CONNECTION
 from calcs.structural.column_capacity import MODULE as STRUCTURAL_COLUMN_CAPACITY
+from calcs.structural.deck_grating import MODULE as STRUCTURAL_DECK_GRATING
 from core.calc_base import CalcModule
 
 CALC_REGISTRY: list[CalcModule] = [
@@ -18,6 +19,7 @@ CALC_REGISTRY: list[CalcModule] = [
     STRUCTURAL_COLUMN_CAPACITY,
     STRUCTURAL_BOLTED_SHEAR_CONNECTION,
     STRUCTURAL_BASE_PLATE,
+    STRUCTURAL_DECK_GRATING,
 ]
 
 
