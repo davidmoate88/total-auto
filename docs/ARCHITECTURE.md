@@ -12,7 +12,7 @@ pieces are meant to connect once they're all built out.
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | Placeholder — README + pattern only |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks) | Placeholder — README + pattern only |
-| `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping skeletons | **All five agreed disciplines built** — civils, structural, LV electrical, HV electrical, mechanical piping. Milestone 1a's architecture pass is complete; detail pass (criteria/assumptions/deliverables, calcs/ modules) is next |
+| `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are next |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
 | `comms/meeting_minutes/` | Transcript → structured minutes → actions | Data model + interface stub (`extract_minutes()` raises `NotImplementedError`) |
 | `comms/email_triage/` | Inbox summarization/prioritisation | Data model + interface stub (`triage_inbox()` raises `NotImplementedError`), gated on a connector |
@@ -108,31 +108,37 @@ already flagged in the LV electrical module, at the piping/electrical boundary.
 
 For all five, criteria, assumptions, and deliverables were initially left
 empty — architecture before detail (see docs/examples/ for a generated look
-at each current output shape). The detail pass is now under way, one
-discipline at a time: **`civils.py`, `structural.py`, `electrical_lv.py`, and
-`electrical_hv.py` now have criteria, assumptions, exclusions, and
-deliverables populated.** Civils covers survey tolerances, SuDS
-discharge/climate-change criteria, flood freeboard, pavement design life,
-retaining wall design working life, etc. Structural covers design working
-life/consequence class, platform loading and minimum walkway width,
-stair/ladder pitch, guard-rail height/load/gap limits, notional horizontal
-robustness load, expansion joint spacing and galvanizing coating thickness,
-etc. LV electrical covers system voltage/frequency/earthing system, voltage
-drop and cable derating ambient, earth fault loop impedance/bonding
-conductor sizing, motor starting threshold and enclosure IP rating,
-generator changeover/UPS autonomy, lighting levels, hazardous area zone
-classification categories, and arc flash study trigger. HV electrical
-covers the voltage class (kept explicitly generic, per project direction),
-fault level sourced from the DNO connection offer, switchgear topology,
-transformer rating tied directly to the LV load schedule, protection
-grading margin, HV cable bending radius, touch/step potential basis, and
-HV arc flash calculation method — same "verify before real use" caveat as
-their standards lists in all four cases, since these are illustrative
-UK-practice starting values, not confirmed project- or client-specific
-figures. Mechanical piping still has its architecture-pass skeleton only,
-pending the same detail treatment — the last of the five. The corresponding
-`calcs/<discipline>/` modules (beyond geotechnical) are not yet built for any
-discipline.
+at each current output shape). **The detail pass is now complete for all
+five disciplines** — `civils.py`, `structural.py`, `electrical_lv.py`,
+`electrical_hv.py`, and `mechanical_piping.py` all have criteria,
+assumptions, exclusions, and deliverables populated. Civils covers survey
+tolerances, SuDS discharge/climate-change criteria, flood freeboard, pavement
+design life, retaining wall design working life, etc. Structural covers
+design working life/consequence class, platform loading and minimum walkway
+width, stair/ladder pitch, guard-rail height/load/gap limits, notional
+horizontal robustness load, expansion joint spacing and galvanizing coating
+thickness, etc. LV electrical covers system voltage/frequency/earthing
+system, voltage drop and cable derating ambient, earth fault loop
+impedance/bonding conductor sizing, motor starting threshold and enclosure
+IP rating, generator changeover/UPS autonomy, lighting levels, hazardous
+area zone classification categories, and arc flash study trigger. HV
+electrical covers the voltage class (kept explicitly generic, per project
+direction), fault level sourced from the DNO connection offer, switchgear
+topology, transformer rating tied directly to the LV load schedule,
+protection grading margin, HV cable bending radius, touch/step potential
+basis, and HV arc flash calculation method. Mechanical piping covers the
+governing code (kept explicitly generic — both ASME B31.3 and BS EN 13480),
+design pressure/temperature/category sourced from process data, erosional
+velocity and sustained stress allowable, corrosion allowance and MDMT, valve
+pressure class, flange/gasket/bolting selection, hydrotest pressure factor
+and NDT extent, personnel-protection insulation trigger temperature, and the
+support-load-handover basis for its cross-discipline interface section —
+same "verify before real use" caveat as every standards list, since these
+are illustrative practice starting values, not confirmed project- or
+client-specific figures. The corresponding `calcs/<discipline>/` modules
+(beyond geotechnical) are not yet built for any discipline — that, plus
+independent verification of every illustrative value flagged throughout the
+detail passes, is the natural next piece of work.
 
 ## Design principles
 

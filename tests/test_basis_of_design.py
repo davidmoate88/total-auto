@@ -347,3 +347,36 @@ def test_mechanical_piping_render_includes_project_reference_and_all_section_nam
     assert "PRJ-005" in report
     for section in bod.sections().values():
         assert section.name in report
+
+
+def test_mechanical_piping_detail_pass_populates_criteria_assumptions_exclusions_and_deliverables():
+    # 2nd-pass check: every mechanical piping section now carries actual
+    # design criteria, working assumptions, exclusions, and deliverables --
+    # not just scope/standards/interfaces from the architecture pass. This
+    # completes the detail pass across all five agreed disciplines.
+    bod = build_mechanical_piping_bod_skeleton()
+    for name, section in bod.sections().items():
+        assert section.criteria, f"{name} missing criteria"
+        assert section.assumptions, f"{name} missing assumptions"
+        assert section.exclusions, f"{name} missing exclusions"
+        assert section.deliverables, f"{name} missing deliverables"
+
+
+def test_mechanical_piping_governing_code_still_generic_after_detail_pass():
+    # The "keep generic -- list both" governing-code decision must survive
+    # the detail pass, not just the architecture pass.
+    bod = build_mechanical_piping_bod_skeleton()
+    codes = [s.code for s in bod.design_standards_and_criteria.standards]
+    assert "ASME B31.3" in codes
+    assert "BS EN 13480" in codes
+    code_criterion = next(
+        (c for c in bod.design_standards_and_criteria.criteria if c.name == "Governing piping code"), None
+    )
+    assert code_criterion is not None
+    assert "generic" in code_criterion.value.lower()
+
+
+def test_mechanical_piping_hydrotest_criterion_present():
+    bod = build_mechanical_piping_bod_skeleton()
+    names = {c.name for c in bod.pressure_testing_and_inspection.criteria}
+    assert "Hydrotest pressure" in names

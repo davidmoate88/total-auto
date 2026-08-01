@@ -148,13 +148,27 @@ mechanical piping**.
       The "kept generic across voltage classes" scope decision and the
       cross-discipline transformer/LV-load-schedule interface are retained
       and re-tested to confirm they survive the detail pass.
-- [ ] Detail pass on mechanical piping (fill in
-      criteria/assumptions/exclusions/deliverables per section) — the last
-      discipline to receive this treatment, same pattern as the other four.
+- [x] Detail pass, mechanical piping — every section now carries illustrative
+      design criteria (governing code kept explicitly generic, design
+      pressure/temperature/piping category sourced from process data,
+      erosional velocity and target liquid velocity, sustained stress
+      allowable and support spacing, corrosion allowance and MDMT, valve
+      pressure class and actuation default, flange rating/gasket
+      type/bolting material, hydrotest pressure factor and NDT extent,
+      personnel-protection insulation trigger temperature, and the
+      support-load-handover/coordination-review basis for the final
+      cross-discipline section), working assumptions, exclusions, and
+      deliverables. Same illustrative-values caveat as the other four
+      disciplines. The "keep generic — list both governing codes" decision
+      is retained and re-tested to confirm it survives the detail pass.
+      **This completes the detail pass across all five agreed disciplines.**
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
       Code per the project owner's direction; not started for any discipline
-      beyond geotechnical.
+      beyond geotechnical. With the detail pass now complete for all five
+      disciplines, this (plus independent verification of every "illustrative
+      value" flagged throughout the detail passes against actual current
+      standard texts/project requirements) is the natural next piece of work.
 
 ## Milestone 2 — Meeting minutes → actions
 

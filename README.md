@@ -27,22 +27,29 @@ standard geotechnical literature/training knowledge, not by reading the purchase
 BS EN 1997-1 standard text directly, and should be checked against the current
 standard and National Annex before use.
 
-**Milestone 1a (architecture pass complete, detail pass in progress):** worked
-discipline-by-discipline through a "basis of design" (BoD) — the document stating
-scope, standards, criteria, and interfaces for a discipline, distinct from a `calcs/`
-module that performs one specific calculation. All five agreed disciplines are built
-as skeletons: `basis_of_design/civils.py`, `structural.py` (scoped to industrial
-access steelwork), `electrical_lv.py` (plant/industrial LV distribution including
+**Milestone 1a (complete):** worked discipline-by-discipline through a "basis of
+design" (BoD) — the document stating scope, standards, criteria, and interfaces for
+a discipline, distinct from a `calcs/` module that performs one specific calculation.
+All five agreed disciplines are fully built out, architecture AND detail:
+`basis_of_design/civils.py`, `structural.py` (scoped to industrial access
+steelwork), `electrical_lv.py` (plant/industrial LV distribution including
 hazardous area classification), `electrical_hv.py` (incoming supply/substations/
 transformers, kept generic across common HV voltage classes), and
 `mechanical_piping.py` (process piping, governing code kept generic — both ASME
-B31.3 and BS EN 13480 listed). Each also carries risk flags (`core/risk.py`)
+B31.3 and BS EN 13480 listed). Every section in every discipline now carries real
+design criteria, assumptions, exclusions, and deliverables, not just scope/
+standards/interfaces — see `docs/examples/` for a generated look at each
+discipline's current output. Each also carries risk flags (`core/risk.py`)
 wherever a permanent design implies a distinct, riskier construction-stage or
-compliance-sequencing condition. The detail pass — filling in design criteria,
-assumptions, exclusions, and deliverables per section — is now under way:
-**civils, structural, LV electrical, and HV electrical are done**; mechanical
-piping is the last discipline still on its architecture-pass skeleton only.
-See `docs/examples/` for a generated look at each discipline's current output.
+compliance-sequencing condition.
+
+**All criteria values populated in the detail pass are illustrative starting
+points from common UK/industry practice, not confirmed project- or
+client-specific figures** — every one is flagged for verification in its
+module's docstring, the same "verify before real use" caveat applied
+throughout this repo. The natural next step is building the corresponding
+`calcs/<discipline>/` modules (beyond geotechnical) that these criteria and
+`calculations_required` entries point at.
 
 ## Getting started
 
