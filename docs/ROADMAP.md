@@ -48,7 +48,7 @@ plan, not a user manual.
       `bearing_capacity.py`. 18 new tests, all verified against independently
       hand-derivable values (an idealised test section with geometry-derived
       A/Iy/Wel/Wpl, the same approach used for Nq/Nc in the geotechnical
-      tests). Not yet wired into the Streamlit UI.
+      tests). Wired into the Streamlit UI (see below).
 - [x] Second structural calc module: `calcs/structural/column_capacity.py` —
       cross-section compression resistance (SS6.2.4) and flexural buckling
       resistance about both principal axes (SS6.3.1) for a rolled steel I/H
@@ -87,7 +87,7 @@ plan, not a user manual.
       principle used throughout this repo, one level further than the
       default-plus-override pattern used elsewhere. 15 new tests, arithmetic
       verified by hand against the module's own documented alpha_b/k1
-      formulae. Not yet wired into the Streamlit UI.
+      formulae. Wired into the Streamlit UI (see below).
 - [x] Fourth structural calc module: `calcs/structural/base_plate.py` —
       concrete/grout bearing utilisation under a concentric column base
       plate, and HD bolt tension utilisation under net uplift, to EN 1993-1-8
@@ -102,7 +102,26 @@ plan, not a user manual.
       both required direct inputs rather than derived. The HD bolt tension
       check (Table 3.4, Ft,Rd=0.9*fub*As/gamma_M2) is higher-confidence and
       fully implemented. Base plate bending itself is not checked. 10 new
-      tests, arithmetic verified by hand. Not yet wired into the Streamlit UI.
+      tests, arithmetic verified by hand. Wired into the Streamlit UI (see below).
+- [x] Wired all five `calcs/` modules into the Streamlit UI (`app.py`) — the
+      original app hand-laid-out a form for the one calc that existed
+      (bearing resistance); with four more modules built since, that stopped
+      scaling. `app.py` now discovers every module in
+      `calcs.registry.CALC_REGISTRY` and auto-builds each one's form from its
+      pydantic input model: widget type (selectbox/checkbox/number_input/
+      text_input) chosen from the field's annotation and constraint metadata,
+      `Optional[...]` fields getting a "Set `<field>`?" toggle rather than a
+      sentinel value that might itself fail validation. Verified in a real
+      browser (per the "start the dev server, use the feature" rule) across
+      all six tabs, not just imported/compiled. Found and fixed a real bug in
+      the process: the ground-model-interpreter → bearing-resistance prefill
+      handoff silently stopped updating on a second interpretation, because
+      Streamlit widgets only apply a changed `value=` the first time a given
+      widget `key` renders — fixed with a `bearing_prefill_version` counter
+      folded into the key. See `docs/ARCHITECTURE.md`'s "The Streamlit UI"
+      section for the full mechanism and trade-off (a flat auto-generated
+      form per module, replacing the original tab's hand-laid-out columns/
+      expanders).
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text

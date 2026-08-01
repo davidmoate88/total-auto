@@ -15,7 +15,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | Package | Purpose | Status |
 |---|---|---|
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
-| `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Four modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension). All verified, none wired into the Streamlit UI. Combined bending+axial (SS6.3.3), block tearing, base plate bending, and moment connections not yet built |
+| `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Four modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension). All verified, all wired into the Streamlit UI via the generic form (see below). Combined bending+axial (SS6.3.3), block tearing, base plate bending, and moment connections not yet built |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks) | Placeholder — README + pattern only |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are next |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
@@ -209,6 +209,42 @@ inventing any new domain knowledge: it's built entirely by introspecting the
   project-level document (see `docs/examples/master_basis_of_design.md` and
   `docs/examples/process_flow_and_open_items.md`).
 
+## The Streamlit UI (`app.py`)
+
+`app.py` originally special-cased the one calc that existed (bearing
+resistance) with a hand-laid-out form. With four more `calcs/structural/`
+modules built, that stopped scaling — `app.py` now discovers every module in
+`calcs.registry.CALC_REGISTRY` and builds each one's form generically
+(`_field_widget`), rather than hand-writing a form per module. This is the
+design principle already stated below ("the app... doesn't change" when a new
+discipline is added) actually being followed, not just asserted.
+
+`_field_widget` introspects a pydantic v2 field's annotation, default, and
+constraint metadata (`Ge`/`Gt`/`Le`/`Lt`) to pick a widget: `st.selectbox` for
+`Literal[...]`, `st.checkbox` for `bool`, `st.number_input` for `int`/`float`
+(with `min_value`/`max_value` from `gt`/`ge`/`lt`/`le` where present),
+`st.text_input` otherwise. `Optional[...]` fields get a "Set `<field>`?"
+checkbox rather than a sentinel value, since a `gt=0` field genuinely has no
+safe zero-value to mean "omit this" — the checkbox toggles between
+`st.text_input`/`st.number_input`/etc. and passing `None` straight through.
+
+The trade-off: the original bearing-resistance tab's hand-laid-out columns
+and expanders (grouping eccentricity/loads together) are gone — every module
+now gets one flat form. That's a deliberate scope reduction in favour of
+genericity across five (and growing) modules rather than bespoke layout code
+per module; nothing stops a later pass adding layout hints to the generic
+renderer if the flat form proves annoying in practice.
+
+The ground-model-interpreter → bearing-resistance prefill handoff (unique to
+those two tabs — no other module has an upstream data source yet) required
+one specific fix: Streamlit widgets only apply their `value=` argument the
+*first* time a given widget `key` renders; on a later rerun the widget keeps
+whatever the user last set, even if the caller passes a different `value=`.
+A `bearing_prefill_version` counter (incremented each time the ground model
+tab saves a new prefill) is folded into the bearing module's widget keys, so
+a new prefill genuinely gets fresh widgets rather than being silently
+ignored. This wasn't a hypothetical — it reproduced during verification.
+
 ## Design principles
 
 1. **Data contract before logic.** Every domain gets a `models.py` (pydantic)
@@ -268,5 +304,8 @@ actually wired, not just planned:
   The right persistence choice (flat files, SQLite, something else) is easier
   to pick once real usage patterns exist.
 - No auth/multi-user considerations — this is a single-user tool for now.
-- No cross-domain UI — `app.py` currently only serves the geotechnical tools.
-  A portfolio/comms UI is future work once there's logic behind those models.
+- No cross-domain UI — `app.py` serves the ground model interpreter plus every
+  registered `calcs/` module (auto-discovered from `calcs.registry.CALC_REGISTRY`
+  with a form generated from each module's pydantic input model — see
+  `app.py`'s docstring), but nothing from `basis_of_design/`, `portfolio/`, or
+  `comms/`. That's future work once there's logic behind those models.

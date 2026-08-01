@@ -105,8 +105,19 @@ axial load at once (a true beam-column) needs the EN 1993-1-1 SS6.3.3
 interaction check, which neither module performs; that's flagged explicitly in
 both modules' docstrings/warnings rather than approximated. The bolted
 connection and base plate modules cover "Connection design" and "Base plate /
-holding-down bolt design" similarly. None of the four are yet wired into the
-Streamlit UI (`app.py` still only serves the geotechnical tools).
+holding-down bolt design" similarly.
+
+**All five `calcs/` modules are now wired into the Streamlit UI.** `app.py` no
+longer hand-lays-out a form per module — it discovers every module in
+`calcs.registry.CALC_REGISTRY` and auto-builds each one's form from its
+pydantic input model (widget type chosen from the field's annotation/
+constraints; `Optional[...]` fields get a "Set `<field>`?" toggle instead of a
+sentinel value). See `docs/ARCHITECTURE.md`'s "The Streamlit UI" section for
+the mechanism and a real bug this surfaced (and fixed) in the ground-model →
+bearing-resistance prefill handoff: Streamlit widgets ignore a changed
+`value=` on reruns unless the widget's `key` also changes, so a second
+ground-model interpretation was silently not updating the bearing tab's
+pre-filled fields until a prefill-version counter was added to the key.
 
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, the beam-column interaction check,
@@ -147,7 +158,7 @@ pytest
 
 ```
 total-auto/
-├── app.py                          # Streamlit UI — ground model interpreter + bearing calc
+├── app.py                          # Streamlit UI — ground model interpreter + auto-generated form per calcs.registry module
 ├── core/
 │   ├── calc_base.py                # Shared interfaces: CalcInput, CalcResult, registry
 │   ├── report.py                   # Turns a CalcResult into a review-ready markdown sheet
