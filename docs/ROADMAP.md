@@ -125,9 +125,22 @@ mechanical piping**.
       The multi-storey/occupied-building exclusion (the original scope pivot)
       is retained and explicitly re-tested to confirm it survives the detail
       pass, not just the architecture pass.
-- [ ] Detail pass on LV electrical, HV electrical, and mechanical piping (fill
-      in criteria/assumptions/exclusions/deliverables per section) — same
-      pattern as civils and structural, one discipline at a time.
+- [x] Detail pass, LV electrical — every section now carries illustrative
+      design criteria (system voltage/frequency/earthing system, voltage drop
+      and cable derating ambient, earth fault loop impedance/bonding
+      conductor sizing, DOL starting threshold and enclosure IP rating,
+      generator changeover time and UPS autonomy, illuminance levels and
+      emergency lighting duration, socket circuit rating and containment
+      fill factor, zone classification categories, arc flash study trigger),
+      working assumptions, exclusions, and deliverables. Same
+      illustrative-values caveat as civils/structural. The hazardous area
+      classification standards/risk flag (the project-specific addition to
+      this discipline) are retained and re-tested to confirm they survive
+      the detail pass.
+- [ ] Detail pass on HV electrical and mechanical piping (fill in
+      criteria/assumptions/exclusions/deliverables per section) — same
+      pattern as civils, structural, and LV electrical, one discipline at a
+      time.
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
       Code per the project owner's direction; not started for any discipline

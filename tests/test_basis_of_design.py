@@ -199,6 +199,34 @@ def test_electrical_lv_render_includes_project_reference_and_all_section_names()
         assert section.name in report
 
 
+def test_electrical_lv_detail_pass_populates_criteria_assumptions_exclusions_and_deliverables():
+    # 2nd-pass check: every LV electrical section now carries actual design
+    # criteria, working assumptions, exclusions, and deliverables -- not just
+    # scope/standards/interfaces from the architecture pass.
+    bod = build_electrical_lv_bod_skeleton()
+    for name, section in bod.sections().items():
+        assert section.criteria, f"{name} missing criteria"
+        assert section.assumptions, f"{name} missing assumptions"
+        assert section.exclusions, f"{name} missing exclusions"
+        assert section.deliverables, f"{name} missing deliverables"
+
+
+def test_electrical_lv_hazardous_area_criteria_still_present_after_detail_pass():
+    # The hazardous area classification standards/risk flag must survive the
+    # detail pass, not just the architecture pass.
+    bod = build_electrical_lv_bod_skeleton()
+    assert bod.hazardous_area_classification.standards
+    assert any(f.category == "code_compliance" and f.severity == "high" for f in bod.hazardous_area_classification.risk_flags)
+    names = {c.name for c in bod.hazardous_area_classification.criteria}
+    assert "Zone classification categories" in names
+
+
+def test_electrical_lv_design_criteria_includes_system_voltage():
+    bod = build_electrical_lv_bod_skeleton()
+    names = {c.name for c in bod.design_standards_and_criteria.criteria}
+    assert "System voltage" in names
+
+
 def test_electrical_hv_skeleton_has_all_eight_sections():
     bod = build_electrical_hv_bod_skeleton()
     assert set(bod.sections().keys()) == set(ELECTRICAL_HV_SECTION_NAMES)
