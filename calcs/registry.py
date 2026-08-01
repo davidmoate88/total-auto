@@ -11,6 +11,7 @@ from calcs.civil.lateral_earth_pressure import MODULE as CIVIL_LATERAL_EARTH_PRE
 from calcs.civil.retaining_wall_stability import MODULE as CIVIL_RETAINING_WALL_STABILITY
 from calcs.civil.slope_stability import MODULE as CIVIL_SLOPE_STABILITY
 from calcs.civil.surface_water_discharge import MODULE as CIVIL_SURFACE_WATER_DISCHARGE
+from calcs.electrical_hv.arc_flash_ppe_check import MODULE as ELECTRICAL_HV_ARC_FLASH_PPE_CHECK
 from calcs.electrical_hv.protection_grading import MODULE as ELECTRICAL_HV_PROTECTION_GRADING
 from calcs.electrical_hv.transformer_sizing import MODULE as ELECTRICAL_HV_TRANSFORMER_SIZING
 from calcs.electrical_lv.arc_flash_ppe_check import MODULE as ELECTRICAL_LV_ARC_FLASH_PPE_CHECK
@@ -48,6 +49,7 @@ CALC_REGISTRY: list[CalcModule] = [
     ELECTRICAL_LV_EARTH_ELECTRODE_RESISTANCE,
     ELECTRICAL_HV_TRANSFORMER_SIZING,
     ELECTRICAL_HV_PROTECTION_GRADING,
+    ELECTRICAL_HV_ARC_FLASH_PPE_CHECK,
 ]
 
 

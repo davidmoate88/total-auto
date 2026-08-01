@@ -489,6 +489,30 @@ plan, not a user manual.
       t_down=0.227s, t_up=0.594s, margin=0.367s, PASS against a 0.3s
       requirement) and end-to-end in a real browser -- UI result matched
       the CLI run exactly. 306/306 tests passing.
+- [x] Third electrical (HV) calc module:
+      `calcs/electrical_hv/arc_flash_ppe_check.py` -- answers
+      `arc_flash_and_hv_safety`'s "HV arc flash calculation method" and
+      "Minimum PPE category for HV switching" `DesignCriterion` entries.
+      Shares its LV counterpart's core reasoning for not calculating
+      incident energy, reinforced by this discipline's own criterion note
+      that "not all LV-oriented tools extend cleanly to HV switchgear" --
+      incident energy must come from a dedicated HV-specific study, never
+      extrapolated from an LV assessment. Deliberately DIFFERENT in shape
+      from the LV module, not just re-parameterised: HV incident energies
+      routinely exceed the LV module's Category 1-4 banding (tops out
+      ~40 cal/cm^2) entirely, so this module instead reports the required
+      PPE arc rating directly (== the incident energy) and checks it
+      against a practical arc-rated PPE limit (illustrative default 100
+      cal/cm^2) -- above which the finding is "PPE cannot protect a worker
+      here, use de-energised work/other engineering controls," not "get a
+      bigger suit." A "PPE required" finding carries `high` severity here
+      (vs LV's `medium`), a deliberate difference reflecting this
+      discipline's own existing risk flag that HV arc flash consequences
+      are typically far more severe than LV. 8 new tests, verified against
+      a hand-checked example (55 cal/cm^2 -> PPE required, high severity;
+      150 cal/cm^2 -> exceeds practical limit, critical severity) and
+      end-to-end in a real browser -- UI result matched the CLI run
+      exactly. 314/314 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -646,21 +670,24 @@ mechanical piping**.
       `earth_electrode_resistance.py`, Dwight's formula for a single
       vertical driven earth rod, closing the gap between circuit-level
       earth fault protection and the actual earth electrode -- see that
-      module's docstring), and electrical_hv has its first two
+      module's docstring), and electrical_hv has its first three
       (`transformer_sizing.py`, candidate transformer rating checked
       against LV demand plus a growth margin, HV/LV full-load current --
       the first cross-discipline calc-to-calc handoff, taking LV demand
-      directly from `load_schedule_diversity.py`'s output; and
+      directly from `load_schedule_diversity.py`'s output;
       `protection_grading.py`, IEC 60255-151 IDMT relay operating times
       and grading margin check -- the curve constants themselves are
       embedded, unlike this discipline's other modules, since they're
-      about as universal as protection engineering constants get) -- see
-      Milestone 1 above for all.
+      about as universal as protection engineering constants get; and
+      `arc_flash_ppe_check.py`, required PPE arc rating vs a practical PPE
+      limit from an externally-supplied incident energy figure --
+      deliberately shaped differently from the LV arc flash module, not
+      just re-parameterised) -- see Milestone 1 above for all.
       Remaining: block tearing, base plate bending, civils attenuation
       volume sizing (open item above -- needs the FSR/FEH rainfall model)
       and highways/pavement calcs, electrical_lv's motor starting (skipped
-      per project direction for now), the rest of electrical_hv
-      (substation earth grid design, HV arc flash), and all
+      per project direction for now), electrical_hv's substation earth
+      grid design, and all
       mechanical_piping calcs.
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against

@@ -23,8 +23,9 @@ criteria, assumptions, exclusions, and deliverables are now populated per
 section. Calculation logic itself (the corresponding `calcs/electrical_hv/`
 modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
-module exists (see calcs/electrical_hv/transformer_sizing.py and
-calcs/electrical_hv/protection_grading.py for the first two); the rest
+module exists (see calcs/electrical_hv/transformer_sizing.py,
+calcs/electrical_hv/protection_grading.py, and
+calcs/electrical_hv/arc_flash_ppe_check.py for the first three); the rest
 remain unset until built.
 """
 
@@ -304,6 +305,14 @@ def build_electrical_hv_bod_skeleton(project_reference: Optional[str] = None) ->
             standards=[
                 Standard(code="HSG85", notes="Shared with LV electrical — HSE guidance, electricity at work safe working practices."),
                 Standard(code="BS EN 50110-1", notes="Shared with LV electrical — operation of electrical installations."),
+            ],
+            calculations_required=[
+                CalculationRequirement(
+                    name="HV PPE requirement check",
+                    description="Reports the required PPE arc rating (== an externally-supplied HV-specific incident energy figure) and flags when it exceeds a practical arc-rated PPE limit, calcs/electrical_hv/arc_flash_ppe_check.py. Deliberately does NOT calculate incident energy itself, and is shaped differently from the LV arc flash module (no LV-style Category 1-4 banding) since HV incident energies routinely exceed that framework -- see that module's docstring.",
+                    standard_reference="IEEE 1584 / BS EN 50110-1",
+                    calc_module_reference="electrical_hv_arc_flash_ppe_check",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="HV arc flash calculation method", value="to be confirmed — IEEE 1584 or an equivalent HV-specific method", notes="Confirm which method/tool is used for the incident energy calculation; not all LV-oriented tools extend cleanly to HV switchgear."),

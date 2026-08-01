@@ -371,10 +371,29 @@ fault current range, since the critical grading point can shift between
 different curve shapes/settings — flagged explicitly rather than
 overclaimed.
 
+**Third electrical (HV) module**: `calcs/electrical_hv/arc_flash_ppe_check.py`
+— answers `arc_flash_and_hv_safety`'s "HV arc flash calculation method" and
+"Minimum PPE category for HV switching" requirements. Same core reasoning
+as the LV arc flash module (does NOT calculate incident energy — the
+discipline's own criterion already notes "not all LV-oriented tools extend
+cleanly to HV switchgear," reinforcing why), but deliberately DIFFERENT in
+shape, not just re-parameterised: HV incident energies routinely exceed the
+LV module's Category 1-4 banding (which tops out around 40 cal/cm²)
+entirely, so rather than force HV results through that same LV-shaped
+framework, this module reports the required PPE arc rating directly
+(== the incident energy) and checks it against a practical arc-rated PPE
+limit (illustrative default 100 cal/cm², confirm against the actual
+specified PPE) — above which PPE alone cannot protect a worker regardless
+of category naming, and the recommendation shifts to de-energised work or
+other engineering controls rather than "get a bigger suit." A "PPE
+required" finding also carries `high` severity here rather than LV's
+`medium`, a deliberate difference reflecting this discipline's own risk
+flag that HV arc flash consequences are typically far more severe than LV.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs, motor starting for
-electrical LV, HV substation earth grid design/HV arc flash, mechanical
-piping calcs) plus independent verification of every illustrative value
+electrical LV, HV substation earth grid design, mechanical piping calcs)
+plus independent verification of every illustrative value
 flagged throughout the detail passes.
 
 ## Getting started
@@ -408,6 +427,7 @@ python3 -m calcs.electrical_lv.arc_flash_ppe_check
 python3 -m calcs.electrical_lv.earth_electrode_resistance
 python3 -m calcs.electrical_hv.transformer_sizing
 python3 -m calcs.electrical_hv.protection_grading
+python3 -m calcs.electrical_hv.arc_flash_ppe_check
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -460,16 +480,17 @@ total-auto/
 │   │   ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
 │   │   ├── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
 │   │   └── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
-│   └── electrical_hv/                # TWO MODULES BUILT — see below
+│   └── electrical_hv/                # THREE MODULES BUILT — see below
 │       ├── transformer_sizing.py     # LV demand + growth margin vs candidate transformer rating, HV/LV full-load current
-│       └── protection_grading.py     # IEC 60255-151 IDMT relay operating time + grading margin check
+│       ├── protection_grading.py     # IEC 60255-151 IDMT relay operating time + grading margin check
+│       └── arc_flash_ppe_check.py    # Required PPE arc rating vs practical PPE limit (incident energy is a direct input)
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
 │   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; five calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance)
-│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; two calcs wired (transformer sizing, protection grading)
+│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; three calcs wired (transformer sizing, protection grading, HV arc flash PPE)
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
 │   ├── graph.py                    # Interface() entries -> dependency graph, cycle detection, Mermaid
@@ -501,6 +522,7 @@ total-auto/
 │   ├── test_earth_electrode_resistance.py # Validates Dwight's formula arithmetic and utilisation check
 │   ├── test_transformer_sizing.py  # Validates required capacity/utilisation and full-load current arithmetic
 │   ├── test_protection_grading.py  # Validates IEC 60255-151 IDMT operating time and grading margin arithmetic
+│   ├── test_hv_arc_flash_ppe_check.py  # Validates required PPE rating and practical-PPE-limit flagging
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser
