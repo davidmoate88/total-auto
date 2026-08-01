@@ -390,11 +390,33 @@ required" finding also carries `high` severity here rather than LV's
 `medium`, a deliberate difference reflecting this discipline's own risk
 flag that HV arc flash consequences are typically far more severe than LV.
 
+**Fourth electrical (HV) module**: `calcs/electrical_hv/substation_earthing_touch_step.py`
+— answers `hv_earthing_and_touch_step_potential`'s "Touch/step potential
+limits" and "Substation earth resistance target" requirements. IEEE 80
+substation earth grid design splits into two genuinely different
+confidence tiers, and this module treats them differently on purpose: the
+grid resistance formula (Sverak's simplified equation) and the tolerable
+touch/step voltage formulas (body-resistance-based, IEEE 80's well-known
+`(1000 + k·Cs·rho_s)·constant/sqrt(ts)` form) are embedded directly — as
+universally reproduced across grounding design literature as
+`earth_electrode_resistance.py`'s Dwight formula or `protection_grading.py`'s
+IDMT curve constants. The ACTUAL mesh (touch) and step voltage AT THE GRID
+are a different matter entirely — deriving them needs IEEE 80's geometric
+correction factors (Km, Ks, Kii, Kh, grid irregularity), a genuinely
+complex multi-case procedure in the same "flag, don't guess" tier as
+`beam_column_interaction.py`'s Annex A/B k-factors or IEEE 1584's incident
+energy model — so `actual_mesh_voltage_v`/`actual_step_voltage_v` are
+required direct inputs from a proper external grid study, never derived
+here. Three independent checks (grid resistance, touch voltage, step
+voltage) each raise their own critical safety flag on failure, with the
+governing (highest) utilisation reported as the headline — the same
+multi-condition/single-governing-headline shape as
+`cable_sizing_voltage_drop.py`.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs, motor starting for
-electrical LV, HV substation earth grid design, mechanical piping calcs)
-plus independent verification of every illustrative value
-flagged throughout the detail passes.
+electrical LV, mechanical piping calcs) plus independent verification of
+every illustrative value flagged throughout the detail passes.
 
 ## Getting started
 
@@ -428,6 +450,7 @@ python3 -m calcs.electrical_lv.earth_electrode_resistance
 python3 -m calcs.electrical_hv.transformer_sizing
 python3 -m calcs.electrical_hv.protection_grading
 python3 -m calcs.electrical_hv.arc_flash_ppe_check
+python3 -m calcs.electrical_hv.substation_earthing_touch_step
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -480,17 +503,18 @@ total-auto/
 │   │   ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
 │   │   ├── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
 │   │   └── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
-│   └── electrical_hv/                # THREE MODULES BUILT — see below
+│   └── electrical_hv/                # FOUR MODULES BUILT — see below
 │       ├── transformer_sizing.py     # LV demand + growth margin vs candidate transformer rating, HV/LV full-load current
 │       ├── protection_grading.py     # IEC 60255-151 IDMT relay operating time + grading margin check
-│       └── arc_flash_ppe_check.py    # Required PPE arc rating vs practical PPE limit (incident energy is a direct input)
+│       ├── arc_flash_ppe_check.py    # Required PPE arc rating vs practical PPE limit (incident energy is a direct input)
+│       └── substation_earthing_touch_step.py  # Sverak grid resistance + IEEE 80 tolerable touch/step voltage (actual mesh/step voltage is a direct input)
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
 │   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; five calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance)
-│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; three calcs wired (transformer sizing, protection grading, HV arc flash PPE)
+│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; four calcs wired (transformer sizing, protection grading, HV arc flash PPE, substation earthing/touch-step)
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
 │   ├── graph.py                    # Interface() entries -> dependency graph, cycle detection, Mermaid
@@ -523,6 +547,7 @@ total-auto/
 │   ├── test_transformer_sizing.py  # Validates required capacity/utilisation and full-load current arithmetic
 │   ├── test_protection_grading.py  # Validates IEC 60255-151 IDMT operating time and grading margin arithmetic
 │   ├── test_hv_arc_flash_ppe_check.py  # Validates required PPE rating and practical-PPE-limit flagging
+│   ├── test_substation_earthing_touch_step.py  # Validates Sverak grid resistance and IEEE 80 tolerable touch/step voltage arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

@@ -18,7 +18,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Six modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `beam_column_interaction.py` (EN 1993-1-1 SS6.3.3 combined bending+axial interaction, equations 6.61/6.62 — k-factors are required direct inputs, see below), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Block tearing, base plate bending, and moment connections not yet built |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Six modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it), `slope_stability.py` (Fellenius Method of Slices, both DA1 combinations, slice geometry as a direct input — see below). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items) and highways/pavement calcs not yet built |
 | `calcs/electrical_lv/` | LV electrical calc modules | **Five modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance). All verified, all wired into the Streamlit UI. Motor starting skipped per project direction |
-| `calcs/electrical_hv/` | HV electrical calc modules | **Three modules built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output), `protection_grading.py` (IEC 60255-151 IDMT relay operating times, upstream/downstream grading margin check — curve constants embedded directly, unlike this discipline's other modules), `arc_flash_ppe_check.py` (required PPE arc rating vs a practical PPE limit from an externally-supplied incident energy figure — deliberately shaped differently from the LV arc flash module, see below). All verified, all wired into the Streamlit UI. Substation earth grid design not yet built |
+| `calcs/electrical_hv/` | HV electrical calc modules | **Four modules built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output), `protection_grading.py` (IEC 60255-151 IDMT relay operating times, upstream/downstream grading margin check — curve constants embedded directly, unlike this discipline's other modules), `arc_flash_ppe_check.py` (required PPE arc rating vs a practical PPE limit from an externally-supplied incident energy figure — deliberately shaped differently from the LV arc flash module), `substation_earthing_touch_step.py` (Sverak grid resistance + IEEE 80 tolerable touch/step voltage, checked against an externally-supplied actual mesh/step voltage — see below). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are being built incrementally |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -571,6 +571,32 @@ here, one step above the LV module's `medium` for the equivalent finding —
 a deliberate, explained difference reflecting `arc_flash_and_hv_safety`'s
 own existing risk flag that HV arc flash consequences are typically far
 more severe than the equivalent LV finding.
+
+The fourth `calcs/electrical_hv/` module, `substation_earthing_touch_step.py`,
+answers `hv_earthing_and_touch_step_potential`'s "Touch/step potential
+limits" and "Substation earth resistance target" criteria, and is the
+clearest example yet in this repo of a single module deliberately splitting
+its scope by confidence tier rather than treating a whole method as either
+"embed it" or "flag it". IEEE 80 substation earth grid design has two very
+different parts: the grid resistance to remote earth (Sverak's simplified
+formula) and the tolerable touch/step voltage limits (IEEE 80's
+body-resistance-based formulas, `(1000 + k*Cs*rho_s)*constant/sqrt(ts)`)
+are both embedded directly, at the same confidence tier as
+`earth_electrode_resistance.py`'s Dwight formula and `protection_grading.py`'s
+IDMT curve constants — genuinely universal, consistently-reproduced
+equations. But the ACTUAL mesh (touch) and step voltage produced by a real
+grid depend on IEEE 80's geometric correction factors (Km, Ks, Kii, Kh, the
+grid irregularity factor n) — a multi-case empirical procedure in the same
+"flag, don't guess" tier as `beam_column_interaction.py`'s Annex A/B
+k-factors or IEEE 1584's incident energy model, so those two figures are
+required direct inputs from a proper external grid study, never derived
+here. The module runs three independent checks (grid resistance, touch
+voltage, step voltage), each capable of raising its own critical safety
+flag, with the highest utilisation reported as the governing headline — the
+same multi-condition/single-governing-headline shape already established
+by `cable_sizing_voltage_drop.py`'s three BS 7671 conditions. This
+completes every named `calculations_required` entry across
+`basis_of_design/electrical_hv.py`.
 
 ## Design principles
 

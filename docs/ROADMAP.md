@@ -513,6 +513,34 @@ plan, not a user manual.
       150 cal/cm^2 -> exceeds practical limit, critical severity) and
       end-to-end in a real browser -- UI result matched the CLI run
       exactly. 314/314 tests passing.
+- [x] Fourth electrical (HV) calc module:
+      `calcs/electrical_hv/substation_earthing_touch_step.py` -- answers
+      `hv_earthing_and_touch_step_potential`'s "Touch/step potential
+      limits" and "Substation earth resistance target" `DesignCriterion`
+      entries. IEEE 80 substation earth grid design splits into two
+      genuinely different confidence tiers, and this module treats them
+      differently on purpose: grid resistance (Sverak's simplified
+      formula) and tolerable touch/step voltage (IEEE 80's
+      body-resistance-based formulas) are embedded directly -- the same
+      confidence tier as `earth_electrode_resistance.py`'s Dwight formula
+      and `protection_grading.py`'s IDMT curve constants. The ACTUAL mesh
+      (touch) and step voltage at a real grid need IEEE 80's geometric
+      correction factors (Km, Ks, Kii, Kh, grid irregularity) -- a
+      genuinely complex multi-case procedure in the same "flag, don't
+      guess" tier as `beam_column_interaction.py`'s Annex A/B k-factors or
+      IEEE 1584's incident energy model -- so those two figures are
+      required direct inputs from a proper external grid study, never
+      derived here. Three independent checks (grid resistance, touch
+      voltage, step voltage) each raise their own critical safety flag on
+      failure, with the highest utilisation reported as the governing
+      headline -- the same multi-condition/single-governing-headline shape
+      as `cable_sizing_voltage_drop.py`. This completes every named
+      `calculations_required` entry in `basis_of_design/electrical_hv.py`.
+      10 new tests, verified against a hand calculation (rho=100 ohm.m,
+      400m^2 grid, Lt=200m, h=0.5m -> Rg=2.62 ohm; Cs=0.7,
+      E_touch=680.8V, E_step=2231.1V; governing utilisation 0.6723,
+      step voltage governing, PASS) and end-to-end in a real browser --
+      UI result matched the CLI run exactly. 324/324 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -670,25 +698,28 @@ mechanical piping**.
       `earth_electrode_resistance.py`, Dwight's formula for a single
       vertical driven earth rod, closing the gap between circuit-level
       earth fault protection and the actual earth electrode -- see that
-      module's docstring), and electrical_hv has its first three
-      (`transformer_sizing.py`, candidate transformer rating checked
-      against LV demand plus a growth margin, HV/LV full-load current --
-      the first cross-discipline calc-to-calc handoff, taking LV demand
-      directly from `load_schedule_diversity.py`'s output;
-      `protection_grading.py`, IEC 60255-151 IDMT relay operating times
-      and grading margin check -- the curve constants themselves are
-      embedded, unlike this discipline's other modules, since they're
-      about as universal as protection engineering constants get; and
-      `arc_flash_ppe_check.py`, required PPE arc rating vs a practical PPE
-      limit from an externally-supplied incident energy figure --
-      deliberately shaped differently from the LV arc flash module, not
-      just re-parameterised) -- see Milestone 1 above for all.
+      module's docstring), and electrical_hv now has all four of its named
+      `calculations_required` entries built (`transformer_sizing.py`,
+      candidate transformer rating checked against LV demand plus a growth
+      margin, HV/LV full-load current -- the first cross-discipline
+      calc-to-calc handoff, taking LV demand directly from
+      `load_schedule_diversity.py`'s output; `protection_grading.py`, IEC
+      60255-151 IDMT relay operating times and grading margin check -- the
+      curve constants themselves are embedded, unlike this discipline's
+      other modules, since they're about as universal as protection
+      engineering constants get; `arc_flash_ppe_check.py`, required PPE
+      arc rating vs a practical PPE limit from an externally-supplied
+      incident energy figure -- deliberately shaped differently from the
+      LV arc flash module, not just re-parameterised; and
+      `substation_earthing_touch_step.py`, Sverak grid resistance + IEEE
+      80 tolerable touch/step voltage, checked against an externally-
+      supplied actual mesh/step voltage -- splits its scope by confidence
+      tier within a single module, embedding the formula, flagging the
+      geometry-dependent actual values) -- see Milestone 1 above for all.
       Remaining: block tearing, base plate bending, civils attenuation
       volume sizing (open item above -- needs the FSR/FEH rainfall model)
       and highways/pavement calcs, electrical_lv's motor starting (skipped
-      per project direction for now), electrical_hv's substation earth
-      grid design, and all
-      mechanical_piping calcs.
+      per project direction for now), and all mechanical_piping calcs.
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current

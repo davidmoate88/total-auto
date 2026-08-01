@@ -24,9 +24,10 @@ section. Calculation logic itself (the corresponding `calcs/electrical_hv/`
 modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
 module exists (see calcs/electrical_hv/transformer_sizing.py,
-calcs/electrical_hv/protection_grading.py, and
-calcs/electrical_hv/arc_flash_ppe_check.py for the first three); the rest
-remain unset until built.
+calcs/electrical_hv/protection_grading.py,
+calcs/electrical_hv/arc_flash_ppe_check.py, and
+calcs/electrical_hv/substation_earthing_touch_step.py for the first four);
+the rest remain unset until built.
 """
 
 from __future__ import annotations
@@ -268,6 +269,14 @@ def build_electrical_hv_bod_skeleton(project_reference: Optional[str] = None) ->
             interfaces=[
                 Interface(with_discipline="geotechnical", description="Soil resistivity drives earth electrode design — see calcs/geotechnical/."),
                 Interface(with_discipline="electrical_lv", description="Whether HV and LV earthing systems are combined or kept separate is decided here."),
+            ],
+            calculations_required=[
+                CalculationRequirement(
+                    name="Substation earth grid resistance and touch/step potential check",
+                    description="Sverak's grid resistance formula and IEEE 80 tolerable touch/step voltage limits, checked against a target grid resistance and an externally-supplied actual mesh/step voltage, calcs/electrical_hv/substation_earthing_touch_step.py. Actual mesh/step voltage is a required direct input -- the Km/Ks/Kii/Kh geometric correction factors needed to derive it are not reproduced here, see that module's docstring.",
+                    standard_reference="IEEE 80 / BS EN 50522",
+                    calc_module_reference="electrical_hv_substation_earthing_touch_step",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Touch/step potential limits", value="per BS EN 50522, based on fault clearance time and body resistance model", notes="No single project-wide figure — calculated from the specific fault clearance time and earthing arrangement once the protection study is complete."),
