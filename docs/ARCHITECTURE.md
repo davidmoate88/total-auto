@@ -16,7 +16,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 |---|---|---|
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Five modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Combined bending+axial (SS6.3.3), block tearing, base plate bending, and moment connections not yet built |
-| `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Three modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode). All verified, all wired into the Streamlit UI. Surface water/SuDS, earthworks (cut/fill, slope stability), and highways/pavement calcs not yet built |
+| `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Four modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one). All verified, all wired into the Streamlit UI. Surface water/SuDS, slope stability, and highways/pavement calcs not yet built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are next |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -284,6 +284,23 @@ Colebrook-White method Sewers for Adoption formally requires) and treats the
 peak flow factor and per-capita flow rate as direct inputs with illustrative
 defaults rather than derived/tabulated values — see the module's own
 docstring for why.
+
+The fourth, `cut_fill_balance.py`, prompted a small, deliberate generic-UI
+extension: it takes site-wide grid-point data (existing level, proposed
+level, tributary area — one point per line, lenient-paste-parsed the same
+way `calcs/geotechnical/interpretation/text_input.py` parses SPT/CPT data,
+but with the parsing living inside the module's own `calculate()` rather
+than a bespoke tab, since it's a registered `calcs/` module like any other,
+not a special-cased one). No previous module had a plain `str` field, so
+`app.py`'s generic form fallback rendered it as `st.text_input`
+(single-line) — useless for pasting many grid points. Changed the fallback
+to `st.text_area` (verified safe: no other registered module has a plain
+`str` field, so nothing else's rendering changes). It's also the first
+calc module in this repo where an "imbalance" doesn't mean a safety
+failure — cut/fill balance is a cost/logistics consideration, so it raises
+a `buildability` risk flag rather than `code_compliance` when the
+surplus/deficit is large, a deliberate category distinction from every
+other module built so far.
 
 ## Design principles
 

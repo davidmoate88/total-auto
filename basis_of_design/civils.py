@@ -120,7 +120,10 @@ def build_civils_bod_skeleton(project_reference: Optional[str] = None) -> Civils
                 Interface(with_discipline="structural", description="Remediation strategy may affect founding levels/type."),
             ],
             calculations_required=[
-                CalculationRequirement(name="Cut/fill balance", description="Earthwork volumes across the site."),
+                CalculationRequirement(
+                    name="Cut/fill balance", description="Earthwork volumes across the site.",
+                    calc_module_reference="civil_cut_fill_balance",
+                ),
                 CalculationRequirement(name="Slope stability check", standard_reference="BS EN 1997-1"),
             ],
             criteria=[

@@ -204,6 +204,35 @@ plan, not a user manual.
       formula independently re-derived). Verified end-to-end in a real
       browser -- UI utilisation (0.1176) matched the CLI run exactly.
       195/195 tests passing.
+- [x] Fourth civils calc module: `calcs/civil/cut_fill_balance.py` —
+      grid-method cut/fill earthwork volume balance, answering
+      `earthworks_and_remediation`'s "Cut/fill balance" (earthwork volumes
+      across the site) `CalculationRequirement` and that section's own
+      "±0 m³" balanced-target criterion. Site-wide grid-point data (existing
+      level, proposed level, tributary area) is supplied as lenient pasted
+      text -- one point per line, parsed the same way
+      `calcs/geotechnical/interpretation/text_input.py` parses SPT/CPT data,
+      but with the parsing and its unparsed-line warnings living inside the
+      module's own `calculate()` (a registered `calcs/` module has no
+      bespoke UI tab the way the ground model interpreter does, so that's
+      the only place warnings can reach the generic Streamlit form's
+      result rendering). This required one small, deliberate generic-UI
+      change: no previously-registered module had a plain `str` field, so
+      `app.py`'s fallback widget rendered `st.text_input` (single-line,
+      useless for pasting many grid points) -- changed to `st.text_area`,
+      verified safe since no other module's rendering was affected. Also
+      the first calc module in this repo where an imbalance is a cost/
+      logistics consideration, not a safety one -- it raises a
+      `buildability` risk flag rather than `code_compliance`, a deliberate
+      category distinction (see `core/risk.py`'s categories) from every
+      other module built this session. The cut-to-fill conversion factor
+      (bulking/shrinkage) is a direct input, default 1.0 -- this author
+      doesn't have confident, generalisable figures to embed (highly
+      soil/compaction-method dependent). 12 new tests, hand-derived volume
+      arithmetic on a fully-worked 6-point grid. Verified end-to-end in a
+      real browser, including the new text_area rendering correctly for
+      multi-line pasted input -- UI net balance (260 m³) matched the CLI
+      run exactly. 207/207 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -343,14 +372,15 @@ mechanical piping**.
       Code per the project owner's direction. **In progress**: structural has
       five modules built and wired (`beam_capacity.py`, `column_capacity.py`,
       `bolted_shear_connection.py`, `base_plate.py`, `deck_grating.py`), and
-      civils has its first three (`lateral_earth_pressure.py`,
-      `retaining_wall_stability.py`, `foul_drainage.py`) -- see Milestone 1
-      above for all.
+      civils has its first four (`lateral_earth_pressure.py`,
+      `retaining_wall_stability.py`, `foul_drainage.py`,
+      `cut_fill_balance.py`) -- see Milestone 1 above for all.
       Remaining: the beam-column combined bending+axial interaction, block
-      tearing, base plate bending, civils surface water/SuDS/earthworks/
-      highways calcs, and all calcs for electrical_lv/electrical_hv/
-      mechanical_piping. Independent verification of every "illustrative
-      value" flagged throughout the detail passes against actual current
+      tearing, base plate bending, civils surface water/SuDS/slope-
+      stability/highways calcs, and all calcs for electrical_lv/
+      electrical_hv/mechanical_piping. Independent verification of every
+      "illustrative value" flagged throughout the detail passes against
+      actual current
       standard texts/project requirements is still outstanding for all
       disciplines.
 

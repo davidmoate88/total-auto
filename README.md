@@ -157,6 +157,21 @@ Colebrook-White method formally required for adoptable sewer design; the
 peak flow factor and per-capita flow rate are direct inputs with
 illustrative defaults. See the module docstring.
 
+**Fourth civils module**: `calcs/civil/cut_fill_balance.py` — grid-method
+cut/fill earthwork volume balance from pasted grid-point data (existing
+level, proposed level, tributary area per line — the same lenient-paste
+pattern as the ground model interpreter's SPT/CPT parsing, but living
+inside the module's own `calculate()` since this is a registered
+`calcs/` module, not a bespoke UI tab). Answers `earthworks_and_remediation`'s
+"Cut/fill balance" requirement. Prompted a small generic-UI fix: no prior
+module had a plain `str` field, so `app.py`'s fallback rendered it as a
+single-line `st.text_input`, useless for pasting many grid points — changed
+to `st.text_area` (verified safe for every other module). Also the first
+module where an imbalance isn't a safety failure — it's a cost/logistics
+consideration, so it raises a `buildability` risk flag, not
+`code_compliance`, a deliberate category distinction from every other
+module built so far. See `docs/ARCHITECTURE.md`'s "Civils calcs" section.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, the beam-column interaction check, surface water/SuDS
 and earthworks civils calcs, electrical/mechanical piping calcs) plus independent verification of
@@ -182,6 +197,7 @@ python3 -m calcs.structural.deck_grating
 python3 -m calcs.civil.lateral_earth_pressure
 python3 -m calcs.civil.retaining_wall_stability
 python3 -m calcs.civil.foul_drainage
+python3 -m calcs.civil.cut_fill_balance
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -220,10 +236,11 @@ total-auto/
 │   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
 │   │   ├── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
 │   │   └── deck_grating.py         # BS EN 1991-1-1 loads, EN 1993-1-1 elastic bearing-bar check, UK NA
-│   └── civil/                       # THREE MODULES BUILT — see below
+│   └── civil/                       # FOUR MODULES BUILT — see below
 │       ├── lateral_earth_pressure.py   # Rankine active earth pressure, EN 1997-1 UK NA DA1
 │       ├── retaining_wall_stability.py # Sliding/overturning/bearing check, EN 1997-1 UK NA DA1
-│       └── foul_drainage.py            # Peak foul flow + Manning's equation pipe capacity check
+│       ├── foul_drainage.py            # Peak foul flow + Manning's equation pipe capacity check
+│       └── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
@@ -251,6 +268,7 @@ total-auto/
 │   ├── test_lateral_earth_pressure.py   # Validates Rankine Ka/Kp and active thrust decomposition
 │   ├── test_retaining_wall_stability.py # Validates sliding/overturning/bearing arithmetic
 │   ├── test_foul_drainage.py       # Validates peak flow generation and Manning's equation arithmetic
+│   ├── test_cut_fill_balance.py    # Validates grid-method volume arithmetic and paste parsing
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

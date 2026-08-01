@@ -19,8 +19,9 @@ Tabs:
 The generic form (_field_widget) introspects each pydantic v2 field's
 annotation, default, and constraint metadata (Ge/Gt/Le/Lt) to pick a
 Streamlit widget: selectbox for Literal, checkbox for bool, number_input for
-int/float (with min/max from gt/ge/lt/le where present), text_input
-otherwise. Optional[...] fields get a "Set <field>?" checkbox so the user can
+int/float (with min/max from gt/ge/lt/le where present), text_area
+otherwise (handles both single-line and pasted multi-line content).
+Optional[...] fields get a "Set <field>?" checkbox so the user can
 explicitly omit them (submitting None) rather than being forced to enter a
 sentinel value that might itself fail validation (e.g. a gt=0 field can't
 default to 0 to mean "omit"). This trades the hand-laid-out columns/expanders
@@ -116,8 +117,11 @@ def _field_widget(field_name: str, field_info, prefill: dict, key_prefix: str):
             widget_kwargs["step"] = 1
         return st.number_input(label, value=cast(raw_value), help=help_text, key=key, **widget_kwargs)
 
+    # text_area rather than text_input: no registered module has used a plain str
+    # field before cut_fill_balance.py's multi-line pasted grid data, and a text_area
+    # degrades gracefully for single-line content too -- no reason to special-case.
     value = prefill_value if prefill_value is not None else (default or "")
-    return st.text_input(label, value=str(value), help=help_text, key=key)
+    return st.text_area(label, value=str(value), help=help_text, key=key)
 
 
 def render_calc_module_tab(module: CalcModule) -> None:
