@@ -17,7 +17,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Five modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Combined bending+axial (SS6.3.3), block tearing, base plate bending, and moment connections not yet built |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Six modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it), `slope_stability.py` (Fellenius Method of Slices, both DA1 combinations, slice geometry as a direct input — see below). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items) and highways/pavement calcs not yet built |
-| `calcs/electrical_lv/` | LV electrical calc modules | **Four modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself, see below). All verified, all wired into the Streamlit UI. Motor starting (skipped per project direction) and every `electrical_hv`/`mechanical_piping` calc not yet built |
+| `calcs/electrical_lv/` | LV electrical calc modules | **Five modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance — see below). All verified, all wired into the Streamlit UI. Motor starting (skipped per project direction) and every `electrical_hv`/`mechanical_piping` calc not yet built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are being built incrementally |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -439,6 +439,34 @@ territory this repo already applies to BS 7671's tables) and a critical
 de-energised work or additional engineering controls over PPE alone. Motor
 starting, the other remaining `lv_distribution_and_reticulation`-adjacent
 calc, was explicitly skipped for now per project direction.
+
+The fifth `calcs/electrical_lv/` module, `earth_electrode_resistance.py`,
+was prompted by a direct question about coverage: is lightning protection
+and earthing actually covered? Lightning protection (BS EN 62305) is
+confirmed still entirely out of scope — `earthing_and_bonding`'s exclusions
+already state this explicitly, and nothing new was built for it. Earthing
+itself, though, had a real gap: `earth_fault_loop_impedance.py` checks a
+*circuit's* protective conductor/disconnection time (Zs), not the earth
+*electrode* that circuit's protective conductor ultimately connects to.
+`earth_electrode_resistance.py` closes that gap for the "main earthing
+terminal" scope item, via Dwight's formula
+(`R = (rho/(2*pi*L))*(ln(4L/d)-1)`) for a single vertical driven rod — one
+of the few genuinely universal, textbook-verified earthing formulae
+(reproduced near-verbatim in BS 7430 and IEEE Std 142), unlike this
+discipline's other modules where the governing table/method itself is the
+uncertain part. Scoped deliberately narrowly: multiple rods in parallel are
+explicitly NOT computed (naive division by rod count is wrong — mutual
+coupling between nearby electrodes means the true reduction is always less
+than proportional, and the correct multi-rod/mesh formulae — Schwarz,
+Sunde — aren't something this author has confident, generalisable recall
+of), and the module is deliberately NOT wired to
+`basis_of_design/electrical_hv.py`'s "Substation earth resistance target"
+criterion: a real HV substation earth grid needs a full multi-electrode
+mesh design with touch/step potential compliance (BS EN 50522/IEEE 80),
+and using this single-rod answer as a stand-in for that would understate
+the real design need. `target_earth_resistance_ohms` is a required direct
+input, same reasoning as `earth_fault_loop_impedance.py`'s `max_zs_ohms` —
+project/system-specific, not a fixed constant.
 
 ## Design principles
 

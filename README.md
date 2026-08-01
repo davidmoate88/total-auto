@@ -286,6 +286,30 @@ PPE alone. This completes the "circuit design trio plus safety" set for
 `calcs/electrical_lv/` at four modules, skipping motor starting for now per
 project direction.
 
+**Fifth electrical (LV) module**: `calcs/electrical_lv/earth_electrode_resistance.py`
+— answers `earthing_and_bonding`'s "main earthing terminal" scope item
+(the earthing calc gap identified when reviewing lightning protection/
+earthing coverage: the earlier `earth_fault_loop_impedance.py` checks a
+*circuit's* protective conductor/disconnection time, not the earth
+*electrode* itself). Embeds Dwight's formula (`R = (rho/(2*pi*L))*(ln(4L/d)-1)`)
+for a single vertical driven rod — one of the few genuinely universal,
+textbook-verified earthing formulae (reproduced near-verbatim in BS 7430
+and IEEE Std 142), so it's embedded rather than flagged, unlike this
+discipline's other modules. Scoped deliberately narrowly: single rod only —
+multiple rods in parallel are explicitly NOT computed (naive division by
+rod count is wrong due to mutual coupling between electrodes; a real
+multi-rod/mesh design needs formulae — Schwarz, Sunde — this author doesn't
+have confident recall of), and it is NOT wired to
+`basis_of_design/electrical_hv.py`'s "Substation earth resistance target"
+criterion, since a HV substation earth grid needs a full multi-electrode
+mesh design with touch/step potential compliance (BS EN 50522/IEEE 80)
+that a single rod would badly understate. Target earth resistance is a
+required direct input (project/system-specific, same reasoning as
+`earth_fault_loop_impedance.py`'s `max_zs_ohms`). Also settled the broader
+question raised alongside this: lightning protection (BS EN 62305) remains
+entirely out of scope in this repo, by explicit exclusion already stated in
+`earthing_and_bonding`'s scope note — not built here or anywhere else.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, the beam-column interaction check, highways/pavement
 civils calcs, motor starting for electrical LV, HV electrical calcs,
@@ -319,6 +343,7 @@ python3 -m calcs.electrical_lv.cable_sizing_voltage_drop
 python3 -m calcs.electrical_lv.load_schedule_diversity
 python3 -m calcs.electrical_lv.earth_fault_loop_impedance
 python3 -m calcs.electrical_lv.arc_flash_ppe_check
+python3 -m calcs.electrical_lv.earth_electrode_resistance
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -364,17 +389,18 @@ total-auto/
 │   │   ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
 │   │   ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
 │   │   └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
-│   └── electrical_lv/                # FOUR MODULES BUILT — see below
+│   └── electrical_lv/                # FIVE MODULES BUILT — see below
 │       ├── cable_sizing_voltage_drop.py    # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
 │       ├── load_schedule_diversity.py      # P/Q load aggregation -> maximum demand current
 │       ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
-│       └── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
+│       ├── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
+│       └── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
-│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; four calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category)
+│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; five calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance)
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
@@ -403,6 +429,7 @@ total-auto/
 │   ├── test_load_schedule_diversity.py    # Validates P/Q load aggregation and paste parsing
 │   ├── test_earth_fault_loop_impedance.py # Validates Zs = Ze+(R1+R2)*factor arithmetic and utilisation check
 │   ├── test_arc_flash_ppe_check.py        # Validates PPE category banding and dangerous-energy flagging
+│   ├── test_earth_electrode_resistance.py # Validates Dwight's formula arithmetic and utilisation check
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

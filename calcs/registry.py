@@ -13,6 +13,7 @@ from calcs.civil.slope_stability import MODULE as CIVIL_SLOPE_STABILITY
 from calcs.civil.surface_water_discharge import MODULE as CIVIL_SURFACE_WATER_DISCHARGE
 from calcs.electrical_lv.arc_flash_ppe_check import MODULE as ELECTRICAL_LV_ARC_FLASH_PPE_CHECK
 from calcs.electrical_lv.cable_sizing_voltage_drop import MODULE as ELECTRICAL_LV_CABLE_SIZING_VOLTAGE_DROP
+from calcs.electrical_lv.earth_electrode_resistance import MODULE as ELECTRICAL_LV_EARTH_ELECTRODE_RESISTANCE
 from calcs.electrical_lv.earth_fault_loop_impedance import MODULE as ELECTRICAL_LV_EARTH_FAULT_LOOP_IMPEDANCE
 from calcs.electrical_lv.load_schedule_diversity import MODULE as ELECTRICAL_LV_LOAD_SCHEDULE_DIVERSITY
 from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACITY
@@ -40,6 +41,7 @@ CALC_REGISTRY: list[CalcModule] = [
     ELECTRICAL_LV_LOAD_SCHEDULE_DIVERSITY,
     ELECTRICAL_LV_EARTH_FAULT_LOOP_IMPEDANCE,
     ELECTRICAL_LV_ARC_FLASH_PPE_CHECK,
+    ELECTRICAL_LV_EARTH_ELECTRODE_RESISTANCE,
 ]
 
 

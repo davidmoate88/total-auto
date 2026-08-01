@@ -24,9 +24,10 @@ modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
 module exists (see calcs/electrical_lv/cable_sizing_voltage_drop.py,
 calcs/electrical_lv/load_schedule_diversity.py,
-calcs/electrical_lv/earth_fault_loop_impedance.py, and
-calcs/electrical_lv/arc_flash_ppe_check.py for the first four); the rest
-remain unset until built.
+calcs/electrical_lv/earth_fault_loop_impedance.py,
+calcs/electrical_lv/arc_flash_ppe_check.py, and
+calcs/electrical_lv/earth_electrode_resistance.py for the first five); the
+rest remain unset until built.
 """
 
 from __future__ import annotations
@@ -165,6 +166,12 @@ def build_electrical_lv_bod_skeleton(project_reference: Optional[str] = None) ->
                     description="Zs = Ze + (R1+R2)*temperature_correction_factor, checked against the maximum permitted Zs for the protective device/disconnection time, calcs/electrical_lv/earth_fault_loop_impedance.py. Max Zs and conductor resistance-per-length are direct inputs -- see that module's docstring.",
                     standard_reference="BS 7671",
                     calc_module_reference="electrical_lv_earth_fault_loop_impedance",
+                ),
+                CalculationRequirement(
+                    name="Earth electrode resistance",
+                    description="R = (rho/(2*pi*L))*(ln(4L/d)-1), Dwight's formula for a single vertical driven earth rod, checked against a target earth resistance, calcs/electrical_lv/earth_electrode_resistance.py. Single rod only -- does not cover multiple rods/mesh grids or HV substation earthing, see that module's docstring.",
+                    standard_reference="BS 7430",
+                    calc_module_reference="electrical_lv_earth_electrode_resistance",
                 ),
             ],
             criteria=[
