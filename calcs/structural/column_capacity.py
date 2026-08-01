@@ -5,8 +5,9 @@ National Annex. Completes, together with `calcs/structural/beam_capacity.py`,
 `CalculationRequirement` in `basis_of_design/structural.py` -- this module is
 the "column" half, scoped to PURE AXIAL COMPRESSION only (see Known
 simplifications). Bending is `beam_capacity.py`'s job; a member carrying both
-at once (a true "beam-column") needs the combined check neither module
-performs -- see below.
+at once (a true "beam-column") needs the combined check in
+`calcs/structural/beam_column_interaction.py` (EN 1993-1-1 SS6.3.3), which
+consumes this module's Nb,Rd output -- see below.
 
 *** IMPORTANT — READ BEFORE RELYING ON THIS FOR REAL DESIGN ***
 Built from structural-engineering literature/training knowledge, not by
@@ -42,13 +43,14 @@ c=0.49, d=0.76).
 
 Known simplifications / not implemented (see Warnings in the result):
 - PURE AXIAL COMPRESSION ONLY. Combined bending + axial compression (a true
-  "beam-column") requires the EN 1993-1-1 SS6.3.3 interaction check (equivalent
-  uniform moment factors, Annex A/B interaction coefficients) -- genuinely one
-  of the more involved parts of EN 1993-1-1, and NOT implemented here. If a
-  member carries significant bending as well as axial load, this module's
-  Nb,Rd and `beam_capacity.py`'s Mc,Rd are each individually valid as
-  stand-alone checks but do NOT combine into a valid member check by simply
-  summing utilisations -- do the full SS6.3.3 check separately.
+  "beam-column") requires the EN 1993-1-1 SS6.3.3 interaction check -- this
+  module's Nb,Rd and `beam_capacity.py`'s Mc,Rd are each individually valid
+  as stand-alone checks but do NOT combine into a valid member check by
+  simply summing utilisations. That combined check is now built separately
+  as `calcs/structural/beam_column_interaction.py`, which takes this
+  module's Nb,y,Rd/Nb,z,Rd and `beam_capacity.py`'s Mc,Rd as its own inputs
+  -- the Annex A/B interaction k-factors it needs are themselves required
+  direct inputs there, not derived (see that module's docstring for why).
 - Web classification for the Table 5.2 c/t check uses the UNIFORM COMPRESSION
   row (33/38/42*epsilon), which is the correct row for a pure axial member --
   if this module is ever extended to combined actions, the web classification
@@ -197,7 +199,8 @@ def calculate(inputs: ColumnCapacityInput) -> CalcResult:
         "design submission -- see the module docstring.",
         "PURE AXIAL COMPRESSION ONLY -- this module does not perform the EN 1993-1-1 SS6.3.3 "
         "combined bending+axial interaction check. If this member also carries significant "
-        "bending, the axial buckling resistance below is not, on its own, a valid member check.",
+        "bending, the axial buckling resistance below is not, on its own, a valid member check "
+        "-- run calcs/structural/beam_column_interaction.py using this result as an input.",
         "Torsional/torsional-flexural buckling is not checked -- flexural buckling is assumed to "
         "govern (valid for doubly-symmetric I/H sections only).",
     ]
@@ -335,7 +338,8 @@ MODULE = CalcModule(
     description=(
         "Cross-section compression resistance and flexural buckling resistance (both principal "
         "axes) for a rolled steel I/H-section column under pure axial compression, to EN 1993-1-1 "
-        "with UK National Annex partial factors. Does not cover combined bending+axial (SS6.3.3)."
+        "with UK National Annex partial factors. Combined bending+axial (SS6.3.3) is a separate "
+        "check, see calcs/structural/beam_column_interaction.py."
     ),
     input_model=ColumnCapacityInput,
     calculate=calculate,

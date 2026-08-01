@@ -19,6 +19,7 @@ from calcs.electrical_lv.load_schedule_diversity import MODULE as ELECTRICAL_LV_
 from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACITY
 from calcs.structural.base_plate import MODULE as STRUCTURAL_BASE_PLATE
 from calcs.structural.beam_capacity import MODULE as STRUCTURAL_BEAM_CAPACITY
+from calcs.structural.beam_column_interaction import MODULE as STRUCTURAL_BEAM_COLUMN_INTERACTION
 from calcs.structural.bolted_shear_connection import MODULE as STRUCTURAL_BOLTED_SHEAR_CONNECTION
 from calcs.structural.column_capacity import MODULE as STRUCTURAL_COLUMN_CAPACITY
 from calcs.structural.deck_grating import MODULE as STRUCTURAL_DECK_GRATING
@@ -28,6 +29,7 @@ CALC_REGISTRY: list[CalcModule] = [
     GEOTECH_BEARING_CAPACITY,
     STRUCTURAL_BEAM_CAPACITY,
     STRUCTURAL_COLUMN_CAPACITY,
+    STRUCTURAL_BEAM_COLUMN_INTERACTION,
     STRUCTURAL_BOLTED_SHEAR_CONNECTION,
     STRUCTURAL_BASE_PLATE,
     STRUCTURAL_DECK_GRATING,

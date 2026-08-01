@@ -15,7 +15,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | Package | Purpose | Status |
 |---|---|---|
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
-| `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Five modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Combined bending+axial (SS6.3.3), block tearing, base plate bending, and moment connections not yet built |
+| `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Six modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `beam_column_interaction.py` (EN 1993-1-1 SS6.3.3 combined bending+axial interaction, equations 6.61/6.62 — k-factors are required direct inputs, see below), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Block tearing, base plate bending, and moment connections not yet built |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Six modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it), `slope_stability.py` (Fellenius Method of Slices, both DA1 combinations, slice geometry as a direct input — see below). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items) and highways/pavement calcs not yet built |
 | `calcs/electrical_lv/` | LV electrical calc modules | **Five modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance — see below). All verified, all wired into the Streamlit UI. Motor starting (skipped per project direction) and every `electrical_hv`/`mechanical_piping` calc not yet built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are being built incrementally |
@@ -467,6 +467,31 @@ and using this single-rod answer as a stand-in for that would understate
 the real design need. `target_earth_resistance_ohms` is a required direct
 input, same reasoning as `earth_fault_loop_impedance.py`'s `max_zs_ohms` —
 project/system-specific, not a fixed constant.
+
+The sixth `calcs/structural/` module, `beam_column_interaction.py`, closes a
+gap flagged since `beam_capacity.py`/`column_capacity.py` were first built:
+a member carrying both bending and axial compression at once (a true
+"beam-column") needs the EN 1993-1-1 SS6.3.3 interaction check (equations
+6.61/6.62), which neither of those single-action modules performs. The
+scope decision here parallels `bolted_shear_connection.py`'s `alpha_v`, but
+at a larger scale: rather than one uncertain constant, the whole *method*
+for deriving SS6.3.3's interaction factors (`kyy`/`kyz`/`kzy`/`kzz`, from EN
+1993-1-1 Annex A or B — a multi-case procedure keyed on equivalent uniform
+moment factors, section class, and slenderness) is genuinely complex enough
+that this author doesn't have confident, generalisable recall of it, so all
+four k-factors are required direct inputs. The two governing equations
+themselves, by contrast, are simple and consistently documented across
+textbooks, so they're embedded with the same confidence as this repo's
+other Eurocode formulae — unlike `arc_flash_ppe_check.py`, where almost
+nothing safety-relevant was embeddable, here only the *coefficients* are
+flagged, not the *equations*. The module consumes `column_capacity.py`'s
+`Nb,y,Rd`/`Nb,z,Rd` and `beam_capacity.py`'s `Mc,Rd` directly as inputs —
+the first calc-to-calc handoff within structural, mirroring the pattern
+`load_schedule_diversity.py`→`cable_sizing_voltage_drop.py` already
+established in `calcs/electrical_lv/`. Both `beam_capacity.py`'s and
+`column_capacity.py`'s docstrings/warnings, which previously stated the
+combined check was simply "not implemented," were updated to point at this
+module instead.
 
 ## Design principles
 

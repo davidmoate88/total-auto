@@ -185,7 +185,12 @@ def build_structural_bod_skeleton(project_reference: Optional[str] = None) -> St
                 CalculationRequirement(
                     name="Column axial buckling capacity checks", standard_reference="BS EN 1993-1-1",
                     calc_module_reference="structural_column_capacity_ec3",
-                    description="Cross-section + flexural buckling resistance, calcs/structural/column_capacity.py. Pure axial only -- combined bending+axial (SS6.3.3) is not covered by either module.",
+                    description="Cross-section + flexural buckling resistance, calcs/structural/column_capacity.py. Pure axial only -- see the separate beam-column interaction check below for combined bending+axial.",
+                ),
+                CalculationRequirement(
+                    name="Beam-column combined bending+axial interaction check", standard_reference="BS EN 1993-1-1",
+                    calc_module_reference="structural_beam_column_interaction_ec3",
+                    description="UC1/UC2 = N/Nb,Rd + k*M/M,Rd (EN 1993-1-1 SS6.3.3, equations 6.61/6.62), calcs/structural/beam_column_interaction.py, using resistances from beam_capacity.py/column_capacity.py. Interaction k-factors (Annex A/B) are required direct inputs, not derived -- see that module's docstring.",
                 ),
                 CalculationRequirement(
                     name="Connection design", standard_reference="BS EN 1993-1-8",

@@ -102,10 +102,10 @@ capacity checks" as two separate `CalculationRequirement` entries in
 `basis_of_design/structural.py` (now wired via `calc_module_reference`, the
 first real use of that field) — but a member carrying **both** bending and
 axial load at once (a true beam-column) needs the EN 1993-1-1 SS6.3.3
-interaction check, which neither module performs; that's flagged explicitly in
-both modules' docstrings/warnings rather than approximated. The bolted
-connection and base plate modules cover "Connection design" and "Base plate /
-holding-down bolt design" similarly.
+interaction check, which neither module performs on its own; that gap is
+now closed by `calcs/structural/beam_column_interaction.py` (see below). The
+bolted connection and base plate modules cover "Connection design" and
+"Base plate / holding-down bolt design" similarly.
 - `calcs/structural/deck_grating.py` — the first `platforms_and_walkways`
   module: elastic bending stress and deflection check for a grating/decking
   bearing bar spanning between primary supports, to BS EN 1991-1-1 imposed
@@ -310,11 +310,31 @@ question raised alongside this: lightning protection (BS EN 62305) remains
 entirely out of scope in this repo, by explicit exclusion already stated in
 `earthing_and_bonding`'s scope note — not built here or anywhere else.
 
+**Sixth structural module**: `calcs/structural/beam_column_interaction.py`
+— closes the gap flagged since `beam_capacity.py`/`column_capacity.py` were
+first built: a member carrying both bending and axial compression at once
+(a true beam-column) needs the EN 1993-1-1 SS6.3.3 interaction check
+(equations 6.61/6.62), which neither of those modules performs on its own.
+Unlike the bolted connection module's `alpha_v` (a single uncertain
+constant), the genuinely uncertain part of SS6.3.3 is the whole *method*
+for deriving the interaction factors `kyy`/`kyz`/`kzy`/`kzz` (EN 1993-1-1
+Annex A or B — a multi-case procedure keyed on moment distribution shape
+and section class this author doesn't have confident, generalisable recall
+of), so all four k-factors are required direct inputs, while the two
+interaction equations themselves — simple, consistently-documented linear
+combinations — are embedded with the same confidence as this repo's other
+Eurocode formulae. Consumes `column_capacity.py`'s `Nb,y,Rd`/`Nb,z,Rd` and
+`beam_capacity.py`'s `Mc,Rd` directly as inputs, the first calc-to-calc
+handoff within structural (mirroring the pattern already established
+between `calcs/electrical_lv/` modules). Updated the "not covered"
+docstring claims in both `beam_capacity.py` and `column_capacity.py` to
+point at this module now that it exists.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
-base plate bending, the beam-column interaction check, highways/pavement
-civils calcs, motor starting for electrical LV, HV electrical calcs,
-mechanical piping calcs) plus independent verification of every
-illustrative value flagged throughout the detail passes.
+base plate bending, highways/pavement civils calcs, motor starting for
+electrical LV, HV electrical calcs, mechanical piping calcs) plus
+independent verification of every illustrative value flagged throughout
+the detail passes.
 
 ## Getting started
 
@@ -330,6 +350,7 @@ streamlit run app.py
 python3 -m calcs.geotechnical.bearing_capacity
 python3 -m calcs.structural.beam_capacity
 python3 -m calcs.structural.column_capacity
+python3 -m calcs.structural.beam_column_interaction
 python3 -m calcs.structural.bolted_shear_connection
 python3 -m calcs.structural.base_plate
 python3 -m calcs.structural.deck_grating
@@ -376,9 +397,10 @@ total-auto/
 │   │       ├── correlations.py     # SPT/CPT -> phi'/cu empirical correlations
 │   │       ├── ground_model.py     # Pools data per stratum -> characteristic design params
 │   │       └── text_input.py       # Lenient line-based paste parser (not free-form NLP)
-│   ├── structural/                  # FIVE MODULES BUILT — see below
+│   ├── structural/                  # SIX MODULES BUILT — see below
 │   │   ├── beam_capacity.py        # EN 1993-1-1 simply-supported beam bending/shear/deflection check, UK NA
 │   │   ├── column_capacity.py      # EN 1993-1-1 axial buckling resistance check (both axes), UK NA
+│   │   ├── beam_column_interaction.py  # EN 1993-1-1 SS6.3.3 combined bending+axial interaction check (eq 6.61/6.62)
 │   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
 │   │   ├── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
 │   │   └── deck_grating.py         # BS EN 1991-1-1 loads, EN 1993-1-1 elastic bearing-bar check, UK NA
@@ -416,6 +438,7 @@ total-auto/
 │   ├── test_bearing_capacity.py    # Validates EC7 Annex D factors/DA1 partial factors
 │   ├── test_beam_capacity.py       # Validates EN 1993-1-1 classification, Mc,Rd/Vpl,Rd, deflection
 │   ├── test_column_capacity.py     # Validates EN 1993-1-1 classification, Nc,Rd/Nb,Rd, buckling curves
+│   ├── test_beam_column_interaction.py  # Validates EN 1993-1-1 SS6.3.3 eq 6.61/6.62 arithmetic
 │   ├── test_bolted_shear_connection.py  # Validates EN 1993-1-8 shear/bearing resistance arithmetic
 │   ├── test_base_plate.py          # Validates EN 1993-1-8 base plate bearing / HD bolt tension arithmetic
 │   ├── test_deck_grating.py        # Validates bearing bar tributary load, stress, and deflection arithmetic

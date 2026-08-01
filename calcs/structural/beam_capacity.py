@@ -62,8 +62,9 @@ Known simplifications / not implemented (see Warnings in the result):
   (e.g. imposed-load-only deflection) a project may specifically require.
 - Axial force / combined bending+axial (column) checks are not covered — this
   is a beam (bending-dominant) check only, despite `primary_steel_frame`
-  naming "beam/column" together; a column/combined-actions check is a
-  separate future module.
+  naming "beam/column" together. Combined bending+axial is a separate check,
+  now built as `calcs/structural/beam_column_interaction.py` (EN 1993-1-1
+  SS6.3.3), which consumes this module's My,Rd output as one of its inputs.
 """
 
 from __future__ import annotations

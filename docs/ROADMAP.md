@@ -414,6 +414,28 @@ plan, not a user manual.
       R=29.82 ohm, utilisation 1.491, FAIL against a 20 ohm target) and
       end-to-end in a real browser -- UI result matched the CLI run
       exactly. 280/280 tests passing.
+- [x] Sixth structural calc module:
+      `calcs/structural/beam_column_interaction.py` -- closes a gap flagged
+      since `beam_capacity.py`/`column_capacity.py` were first built: a
+      member carrying both bending and axial compression (a true
+      "beam-column") needs the EN 1993-1-1 SS6.3.3 interaction check
+      (equations 6.61/6.62), which neither single-action module performs.
+      Same scale-up of the "flag, don't guess" pattern as arc flash: the
+      *equations* themselves are simple and consistently documented, so
+      embedded with full confidence, but the interaction k-factors
+      (kyy/kyz/kzy/kzz, from EN 1993-1-1 Annex A or B -- a multi-case
+      procedure keyed on moment distribution and section class) are
+      required direct inputs, not derived. Consumes `column_capacity.py`'s
+      `Nb,y,Rd`/`Nb,z,Rd` and `beam_capacity.py`'s `Mc,Rd` directly -- the
+      first calc-to-calc handoff within structural. Updated both of those
+      modules' docstrings/warnings, which previously said the combined
+      check was simply "not implemented," to point at this module instead,
+      and added a new "Beam-column combined bending+axial interaction
+      check" `CalculationRequirement` to `primary_steel_frame` in
+      `basis_of_design/structural.py`. 8 new tests, verified against a hand
+      calculation (UC1=1.030, UC2=1.116, governing eq 6.62, FAIL) and
+      end-to-end in a real browser -- UI result matched the CLI run
+      exactly. 288/288 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -551,9 +573,9 @@ mechanical piping**.
 - [ ] Build the corresponding `calcs/<discipline>/` modules referenced by
       each section's `calculations_required` entries — deferred to Claude
       Code per the project owner's direction. **In progress**: structural has
-      five modules built and wired (`beam_capacity.py`, `column_capacity.py`,
-      `bolted_shear_connection.py`, `base_plate.py`, `deck_grating.py`), and
-      civils has its first six (`lateral_earth_pressure.py`,
+      six modules built and wired (`beam_capacity.py`, `column_capacity.py`,
+      `beam_column_interaction.py`, `bolted_shear_connection.py`,
+      `base_plate.py`, `deck_grating.py`), and civils has its first six (`lateral_earth_pressure.py`,
       `retaining_wall_stability.py`, `foul_drainage.py`,
       `cut_fill_balance.py`, `surface_water_discharge.py`,
       `slope_stability.py`), and electrical_lv has its first five
@@ -572,11 +594,11 @@ mechanical piping**.
       vertical driven earth rod, closing the gap between circuit-level
       earth fault protection and the actual earth electrode -- see that
       module's docstring) -- see Milestone 1 above for all.
-      Remaining: the beam-column combined bending+axial interaction, block
-      tearing, base plate bending, civils attenuation volume sizing (open
-      item above -- needs the FSR/FEH rainfall model) and highways/pavement
-      calcs, electrical_lv's motor starting (skipped per project direction
-      for now), and all calcs for electrical_hv/mechanical_piping.
+      Remaining: block tearing, base plate bending, civils attenuation
+      volume sizing (open item above -- needs the FSR/FEH rainfall model)
+      and highways/pavement calcs, electrical_lv's motor starting (skipped
+      per project direction for now), and all calcs for
+      electrical_hv/mechanical_piping.
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current
