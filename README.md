@@ -5,8 +5,10 @@ engineering calculations across disciplines, project portfolio tracking (cost, t
 buildability, constraints, risk, feasibility), and information flow (emails, meeting
 minutes, actions, reminders).
 
-This repo is being built incrementally. See `docs/ROADMAP.md` for the full vision and
-what's built vs. planned.
+This repo is being built incrementally. See `docs/ARCHITECTURE.md` for the domain map
+(what's built vs. scaffolded), `docs/ROADMAP.md` for the full vision and build order,
+and **`docs/HANDOFF.md` first if you're picking this up in Claude Code** — it has the
+exact steps and open items from where this was left off.
 
 ## Status
 
@@ -51,20 +53,29 @@ total-auto/
 │   ├── calc_base.py                # Shared interfaces: CalcInput, CalcResult, registry
 │   └── report.py                   # Turns a CalcResult into a review-ready markdown sheet
 ├── calcs/
-│   └── geotechnical/
-│       ├── bearing_capacity.py     # EN 1997-1 Annex D bearing resistance, UK NA DA1
-│       └── interpretation/
-│           ├── models.py           # SPT/CPT/lab test/stratum/site data models
-│           ├── correlations.py     # SPT/CPT -> phi'/cu empirical correlations
-│           ├── ground_model.py     # Pools data per stratum -> characteristic design params
-│           └── text_input.py       # Lenient line-based paste parser (not free-form NLP)
+│   ├── registry.py                 # Central list of registered calc modules
+│   ├── geotechnical/                # BUILT — see below
+│   │   ├── bearing_capacity.py     # EN 1997-1 Annex D bearing resistance, UK NA DA1
+│   │   └── interpretation/
+│   │       ├── models.py           # SPT/CPT/lab test/stratum/site data models
+│   │       ├── correlations.py     # SPT/CPT -> phi'/cu empirical correlations
+│   │       ├── ground_model.py     # Pools data per stratum -> characteristic design params
+│   │       └── text_input.py       # Lenient line-based paste parser (not free-form NLP)
+│   ├── structural/                  # PLACEHOLDER — README + pattern only, no modules yet
+│   └── civil/                       # PLACEHOLDER — README + pattern only, no modules yet
+├── portfolio/                       # DATA MODEL ONLY — Project/Portfolio contract, no logic
+├── comms/
+│   ├── meeting_minutes/             # DATA MODEL + interface stub (extract_minutes())
+│   └── email_triage/                # DATA MODEL + interface stub (triage_inbox())
 ├── tests/
 │   ├── test_bearing_capacity.py    # Validates EC7 Annex D factors/DA1 partial factors
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   └── test_text_input.py          # Validates the paste-format parser
 └── docs/
-    └── ROADMAP.md                  # Full vision and build order
+    ├── ARCHITECTURE.md             # Domain map, design principles, integration points
+    ├── ROADMAP.md                  # Full vision and build order
+    └── HANDOFF.md                  # Start here if continuing in Claude Code
 ```
 
 ## Design principles
