@@ -2,6 +2,7 @@ from basis_of_design.civils import CIVILS_SECTION_NAMES, build_civils_bod_skelet
 from basis_of_design.core import BasisOfDesignSection
 from basis_of_design.electrical_hv import ELECTRICAL_HV_SECTION_NAMES, build_electrical_hv_bod_skeleton
 from basis_of_design.electrical_lv import ELECTRICAL_LV_SECTION_NAMES, build_electrical_lv_bod_skeleton
+from basis_of_design.mechanical_piping import MECHANICAL_PIPING_SECTION_NAMES, build_mechanical_piping_bod_skeleton
 from basis_of_design.render import render_basis_of_design
 from basis_of_design.structural import STRUCTURAL_SECTION_NAMES, build_structural_bod_skeleton
 
@@ -178,5 +179,59 @@ def test_electrical_hv_render_includes_project_reference_and_all_section_names()
     bod = build_electrical_hv_bod_skeleton(project_reference="PRJ-004")
     report = render_basis_of_design("HV Electrical", bod.sections(), project_reference=bod.project_reference)
     assert "PRJ-004" in report
+    for section in bod.sections().values():
+        assert section.name in report
+
+
+def test_mechanical_piping_skeleton_has_all_nine_sections():
+    bod = build_mechanical_piping_bod_skeleton()
+    assert set(bod.sections().keys()) == set(MECHANICAL_PIPING_SECTION_NAMES)
+    assert len(bod.sections()) == 9
+
+
+def test_mechanical_piping_every_section_has_a_scope_and_at_least_one_standard_or_interface():
+    bod = build_mechanical_piping_bod_skeleton()
+    for name, section in bod.sections().items():
+        assert section.scope, f"{name} has no scope description"
+        assert section.standards or section.interfaces, f"{name} has neither standards nor interfaces"
+
+
+def test_mechanical_piping_lists_both_governing_codes_generically():
+    # Project direction: keep the governing piping code generic -- list both
+    # ASME B31.3 and BS EN 13480 rather than committing to one.
+    bod = build_mechanical_piping_bod_skeleton()
+    codes = [s.code for s in bod.design_standards_and_criteria.standards]
+    assert "ASME B31.3" in codes
+    assert "BS EN 13480" in codes
+
+
+def test_mechanical_piping_flags_temporary_works_on_stress_analysis_and_supports():
+    bod = build_mechanical_piping_bod_skeleton()
+    assert any(f.category == "temporary_works" for f in bod.pipe_stress_analysis_and_supports.risk_flags)
+
+
+def test_mechanical_piping_flags_safety_on_pressure_testing():
+    bod = build_mechanical_piping_bod_skeleton()
+    assert any(f.category == "safety" and f.severity == "high" for f in bod.pressure_testing_and_inspection.risk_flags)
+
+
+def test_mechanical_piping_flags_code_compliance_on_hazardous_area_interface():
+    bod = build_mechanical_piping_bod_skeleton()
+    assert any(
+        f.category == "code_compliance" and f.severity == "high"
+        for f in bod.supports_structural_and_hazardous_area_interfaces.risk_flags
+    )
+
+
+def test_mechanical_piping_interfaces_with_structural_and_electrical_lv():
+    bod = build_mechanical_piping_bod_skeleton()
+    assert any(i.with_discipline == "structural" for i in bod.pipe_stress_analysis_and_supports.interfaces)
+    assert any(i.with_discipline == "electrical_lv" for i in bod.supports_structural_and_hazardous_area_interfaces.interfaces)
+
+
+def test_mechanical_piping_render_includes_project_reference_and_all_section_names():
+    bod = build_mechanical_piping_bod_skeleton(project_reference="PRJ-005")
+    report = render_basis_of_design("Mechanical Piping", bod.sections(), project_reference=bod.project_reference)
+    assert "PRJ-005" in report
     for section in bod.sections().values():
         assert section.name in report

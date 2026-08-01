@@ -27,18 +27,20 @@ standard geotechnical literature/training knowledge, not by reading the purchase
 BS EN 1997-1 standard text directly, and should be checked against the current
 standard and National Annex before use.
 
-**Milestone 1a (current):** working discipline-by-discipline through a "basis of
+**Milestone 1a (complete):** worked discipline-by-discipline through a "basis of
 design" (BoD) — the document stating scope, standards, criteria, and interfaces for
 a discipline, distinct from a `calcs/` module that performs one specific calculation.
-Civils, structural, LV electrical, and HV electrical are all built as skeletons
-(`basis_of_design/civils.py`, `structural.py` — scoped to industrial access
-steelwork; `electrical_lv.py` — plant/industrial LV distribution including
-hazardous area classification; `electrical_hv.py` — incoming supply/substations/
-transformers, kept generic across common HV voltage classes). Each also carries
+All five agreed disciplines are built as skeletons: `basis_of_design/civils.py`,
+`structural.py` (scoped to industrial access steelwork), `electrical_lv.py`
+(plant/industrial LV distribution including hazardous area classification),
+`electrical_hv.py` (incoming supply/substations/transformers, kept generic across
+common HV voltage classes), and `mechanical_piping.py` (process piping, governing
+code kept generic — both ASME B31.3 and BS EN 13480 listed). Each also carries
 risk flags (`core/risk.py`) wherever a permanent design implies a distinct,
-riskier construction-stage or compliance-sequencing condition. Mechanical piping
-is next — the last discipline in the agreed order. See `docs/examples/` for a
-generated look at each discipline's current output.
+riskier construction-stage or compliance-sequencing condition. The architecture
+pass is now done for all five; the detail pass (criteria/assumptions/deliverables,
+and the corresponding `calcs/<discipline>/` modules) is next. See `docs/examples/`
+for a generated look at each discipline's current output.
 
 ## Getting started
 
@@ -83,7 +85,8 @@ total-auto/
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
 │   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution
-│   └── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
+│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
+│   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── portfolio/                       # DATA MODEL ONLY — Project/Portfolio contract, no logic
 ├── comms/
 │   ├── meeting_minutes/             # DATA MODEL + interface stub (extract_minutes())
@@ -92,7 +95,8 @@ total-auto/
 │   ├── test_bearing_capacity.py    # Validates EC7 Annex D factors/DA1 partial factors
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
-│   └── test_text_input.py          # Validates the paste-format parser
+│   ├── test_text_input.py          # Validates the paste-format parser
+│   └── test_basis_of_design.py     # Validates all five discipline BoD skeletons + risk flags
 └── docs/
     ├── ARCHITECTURE.md             # Domain map, design principles, integration points
     ├── ROADMAP.md                  # Full vision and build order

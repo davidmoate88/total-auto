@@ -12,7 +12,7 @@ pieces are meant to connect once they're all built out.
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | Placeholder — README + pattern only |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks) | Placeholder — README + pattern only |
-| `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical skeletons | **Shared shape + civils + structural + LV electrical + HV electrical built** — mechanical piping BoD not yet built, same pattern |
+| `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping skeletons | **All five agreed disciplines built** — civils, structural, LV electrical, HV electrical, mechanical piping. Milestone 1a's architecture pass is complete; detail pass (criteria/assumptions/deliverables, calcs/ modules) is next |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
 | `comms/meeting_minutes/` | Transcript → structured minutes → actions | Data model + interface stub (`extract_minutes()` raises `NotImplementedError`) |
 | `comms/email_triage/` | Inbox summarization/prioritisation | Data model + interface stub (`triage_inbox()` raises `NotImplementedError`), gated on a connector |
@@ -94,11 +94,25 @@ combined-vs-separate HV/LV earthing decision is itself safety-critical), and
 arc flash/HV safety. Kept generic across common industrial HV voltage classes
 (6.6kV/11kV/33kV) rather than fixed to one, per project direction.
 
-For all four, criteria, assumptions, and deliverables are deliberately left
+`mechanical_piping.py` is the fifth and last, scoped to industrial/plant
+process piping: design standards and criteria (governing piping code kept
+generic — both ASME B31.3 and BS EN 13480 listed, per project direction),
+pipe sizing and flow, pipe stress analysis and supports (interfacing with
+`structural.py` for support steelwork loads), material selection and
+corrosion, valves and specialty items, flanges/gaskets/bolting, pressure
+testing and inspection, insulation and heat tracing (interfacing with
+`electrical_lv.py` for trace heating), and a final cross-cutting section —
+supports/structural interface/hazardous area interface — that exists
+specifically to force the same equipment-vs-classification sequencing check
+already flagged in the LV electrical module, at the piping/electrical boundary.
+
+For all five, criteria, assumptions, and deliverables are deliberately left
 empty — this is architecture, not detail (see docs/examples/ for a generated
-look at each current output shape). Next in this same pattern, in the order
-agreed: **mechanical piping** — as its own `basis_of_design/mechanical_piping.py`
-following the same structure, the last discipline in the originally agreed order.
+look at each current output shape). This completes Milestone 1a's
+architecture pass across the originally agreed discipline order; the detail
+pass (criteria/assumptions/deliverables per section, and the corresponding
+`calcs/<discipline>/` modules) is the next piece of work, deferred per the
+project owner's direction.
 
 ## Design principles
 

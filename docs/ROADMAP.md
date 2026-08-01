@@ -87,13 +87,27 @@ mechanical piping**.
       sequencing, and safety risk on the combined-vs-separate HV/LV earthing
       decision and on HV arc flash needing its own dedicated study (not
       inherited from an LV assessment).
-- [ ] Mechanical piping basis of design skeleton.
+- [x] Mechanical piping basis of design skeleton — 9 sections: design
+      standards & criteria (governing code kept generic — both ASME B31.3 and
+      BS EN 13480 listed, per project direction), pipe sizing & flow, pipe
+      stress analysis & supports, material selection & corrosion, valves &
+      specialty items, flanges/gaskets/bolting, pressure testing & inspection,
+      insulation & heat tracing, and a final supports/structural interface/
+      hazardous area interface section. Flags temporary_works risk on pipe
+      stress analysis & supports (temporary support during erection), a high
+      safety risk on pressure testing & inspection (hydrotest is itself a
+      hazardous activity), and a high code_compliance risk on the final
+      section (mirrors the LV electrical hazardous-area-classification-must-
+      precede-equipment-selection risk, at the piping/electrical boundary).
+      This completes all five disciplines in the agreed order.
 - [ ] Multi-storey/occupied-building structural elements (floor vibration,
       lateral stability/sway, roof structure, fire engineering) — parked per
       project owner's direction; revisit if a future project needs them.
-- [ ] Detail pass on civils and structural (fill in criteria/assumptions/
+- [ ] Detail pass on all five disciplines (fill in criteria/assumptions/
       deliverables per section, build the corresponding calcs/ modules) —
-      deferred to Claude Code per the project owner's direction.
+      deferred to Claude Code per the project owner's direction. Milestone 1a's
+      architecture pass is now complete across civils, structural, LV
+      electrical, HV electrical, and mechanical piping.
 
 ## Milestone 2 — Meeting minutes → actions
 
