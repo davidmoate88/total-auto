@@ -18,7 +18,8 @@ for, worked examples of overriding the illustrative skeleton values — see
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Six modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `beam_column_interaction.py` (EN 1993-1-1 SS6.3.3 combined bending+axial interaction, equations 6.61/6.62 — k-factors are required direct inputs, see below), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Block tearing, base plate bending, and moment connections not yet built |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Six modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it), `slope_stability.py` (Fellenius Method of Slices, both DA1 combinations, slice geometry as a direct input — see below). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items) and highways/pavement calcs not yet built |
 | `calcs/electrical_lv/` | LV electrical calc modules | **Five modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance). All verified, all wired into the Streamlit UI. Motor starting skipped per project direction |
-| `calcs/electrical_hv/` | HV electrical calc modules | **Four modules built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output), `protection_grading.py` (IEC 60255-151 IDMT relay operating times, upstream/downstream grading margin check — curve constants embedded directly, unlike this discipline's other modules), `arc_flash_ppe_check.py` (required PPE arc rating vs a practical PPE limit from an externally-supplied incident energy figure — deliberately shaped differently from the LV arc flash module), `substation_earthing_touch_step.py` (Sverak grid resistance + IEEE 80 tolerable touch/step voltage, checked against an externally-supplied actual mesh/step voltage — see below). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
+| `calcs/electrical_hv/` | HV electrical calc modules | **Four modules built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output), `protection_grading.py` (IEC 60255-151 IDMT relay operating times, upstream/downstream grading margin check — curve constants embedded directly, unlike this discipline's other modules), `arc_flash_ppe_check.py` (required PPE arc rating vs a practical PPE limit from an externally-supplied incident energy figure — deliberately shaped differently from the LV arc flash module), `substation_earthing_touch_step.py` (Sverak grid resistance + IEEE 80 tolerable touch/step voltage, checked against an externally-supplied actual mesh/step voltage). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
+| `calcs/mechanical_piping/` | Mechanical piping calc modules | **First module built** — `line_sizing_velocity_check.py` (actual velocity vs the API RP 14E erosional velocity limit and a target velocity range — the fifth and final discipline to get a working calc, see below). Verified, wired into the Streamlit UI. Pipe stress analysis/support loads and every other named calc not yet built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are being built incrementally |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -597,6 +598,31 @@ same multi-condition/single-governing-headline shape already established
 by `cable_sizing_voltage_drop.py`'s three BS 7671 conditions. This
 completes every named `calculations_required` entry across
 `basis_of_design/electrical_hv.py`.
+
+The first `calcs/mechanical_piping/` module, `line_sizing_velocity_check.py`,
+answers `pipe_sizing_and_flow`'s "Line sizing / velocity check"
+`CalculationRequirement` — the fifth and final discipline in this repo to
+get a working calc. Deliberately scoped to velocity and erosional velocity
+only, not pressure drop, even though the `CalculationRequirement` names
+both: pressure drop (Darcy-Weisbach with a Colebrook-White/Moody friction
+factor) has its own genuinely iterative solution method, distinct enough
+from a straightforward algebraic check that folding it in here would mean
+doing it half-way, the same reasoning that kept `foul_drainage.py` to
+full-bore capacity only. The erosional velocity limit uses API RP 14E's
+`Ve=C/sqrt(rho)`, native to imperial units — handled by converting density
+to lb/ft^3 via an *exact* physical unit conversion factor (0.062428, not a
+recalled formula) so that the ONLY genuinely uncertain, flagged value is
+the empirical constant `C` itself (illustrative default 100 for continuous
+service), matching this discipline's own criterion that there's no single
+project-wide erosional velocity figure. `actual_internal_diameter_mm` is
+also a required direct input — ASME B36.10M's pipe schedule dimensional
+tables are exactly the kind of standard-text-specific data this repo
+doesn't embed, same reasoning as `cable_sizing_voltage_drop.py`'s
+tabulated current rating. A velocity outside the illustrative 3-5 m/s
+target range (again matching this discipline's own stated criterion)
+raises a `buildability` flag rather than `code_compliance` — settling/
+fouling risk if too slow, excess pressure drop/noise if too fast, neither
+an immediate safety issue the way exceeding the hard erosional limit is.
 
 ## Design principles
 

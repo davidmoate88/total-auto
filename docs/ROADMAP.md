@@ -541,6 +541,33 @@ plan, not a user manual.
       E_touch=680.8V, E_step=2231.1V; governing utilisation 0.6723,
       step voltage governing, PASS) and end-to-end in a real browser --
       UI result matched the CLI run exactly. 324/324 tests passing.
+- [x] First mechanical piping calc module:
+      `calcs/mechanical_piping/line_sizing_velocity_check.py` -- the fifth
+      and final discipline in this repo to get a working calc. Answers
+      `pipe_sizing_and_flow`'s "Line sizing / velocity check"
+      `CalculationRequirement`. Deliberately scoped to velocity and
+      erosional velocity only, not pressure drop, even though the
+      requirement names both -- pressure drop (Darcy-Weisbach with a
+      Colebrook-White/Moody friction factor) has its own genuinely
+      iterative solution method, left for a separate future module rather
+      than folded in half-finished, same reasoning as `foul_drainage.py`'s
+      full-bore-only scope. Erosional velocity uses API RP 14E's
+      `Ve=C/sqrt(rho)`, computed by converting density to lb/ft^3 via an
+      *exact* physical unit conversion (0.062428, not a recalled formula)
+      so only the empirical constant C itself (illustrative default 100,
+      continuous service) is a direct input, matching this discipline's
+      own criterion that there's no single project-wide erosional velocity
+      figure. `actual_internal_diameter_mm` is also a required direct
+      input -- ASME B36.10M pipe schedule tables are not embedded, same
+      reasoning as `cable_sizing_voltage_drop.py`'s tabulated cable
+      rating. Velocity outside the illustrative 3-5 m/s target range
+      raises a `buildability` flag (not `code_compliance`) -- softer than
+      exceeding the erosional limit, which raises a critical
+      `code_compliance` flag. 9 new tests, verified against a hand
+      calculation (100 m^3/h through a 100mm bore, water -> V=3.54m/s,
+      Ve=3.86m/s, utilisation 0.917, PASS, within target range) and
+      end-to-end in a real browser -- UI result matched the CLI run
+      exactly. 333/333 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -715,11 +742,16 @@ mechanical piping**.
       80 tolerable touch/step voltage, checked against an externally-
       supplied actual mesh/step voltage -- splits its scope by confidence
       tier within a single module, embedding the formula, flagging the
-      geometry-dependent actual values) -- see Milestone 1 above for all.
+      geometry-dependent actual values), and mechanical_piping has its
+      first (`line_sizing_velocity_check.py`, actual velocity vs the API
+      RP 14E erosional velocity limit and a target velocity range --
+      pressure drop deliberately left out, see that module's docstring)
+      -- see Milestone 1 above for all.
       Remaining: block tearing, base plate bending, civils attenuation
       volume sizing (open item above -- needs the FSR/FEH rainfall model)
       and highways/pavement calcs, electrical_lv's motor starting (skipped
-      per project direction for now), and all mechanical_piping calcs.
+      per project direction for now), pipe stress analysis/support loads
+      and every other named calc in mechanical_piping.
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current

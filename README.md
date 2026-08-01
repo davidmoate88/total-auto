@@ -413,10 +413,36 @@ governing (highest) utilisation reported as the headline — the same
 multi-condition/single-governing-headline shape as
 `cable_sizing_voltage_drop.py`.
 
+**First mechanical piping module**: `calcs/mechanical_piping/line_sizing_velocity_check.py`
+— answers `pipe_sizing_and_flow`'s "Line sizing / velocity check"
+requirement. First module in a new discipline (`calcs/mechanical_piping/`),
+and the fifth and final discipline to get a working calc. Deliberately
+scoped to velocity and erosional velocity only, NOT pressure drop — the
+CalculationRequirement names both, but pressure drop (Darcy-Weisbach with a
+Colebrook-White/Moody friction factor) is a distinct, more involved
+calculation with its own iterative solution method, left for a separate
+future module rather than folded in half-finished. The erosional velocity
+limit uses API RP 14E's `Ve=C/sqrt(rho)`, computed carefully to keep the
+"flag, don't guess" line in the right place: density is converted to
+lb/ft³ using an *exact* physical unit conversion (not a fuzzy recalled
+formula), only the empirical constant `C` itself (illustrative default 100,
+continuous service) is a direct input, matching this discipline's own
+"Erosional velocity limit" criterion note that there's no single
+project-wide figure. `actual_internal_diameter_mm` is also a required
+direct input — standard pipe schedule internal diameters come from ASME
+B36.10M tables, not embedded here, same "flag, don't guess" reasoning as
+`cable_sizing_voltage_drop.py`'s tabulated cable rating. Velocity outside
+the illustrative 3–5 m/s target range (matching this discipline's own
+"Target liquid velocity" criterion) raises a `buildability` flag (settling/
+fouling risk if too slow, excess pressure drop/noise if too fast) — a
+softer signal than exceeding the erosional limit, which raises a critical
+`code_compliance` flag instead.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs, motor starting for
-electrical LV, mechanical piping calcs) plus independent verification of
-every illustrative value flagged throughout the detail passes.
+electrical LV, pipe stress analysis/support loads for mechanical piping)
+plus independent verification of every illustrative value flagged
+throughout the detail passes.
 
 ## Getting started
 
@@ -451,6 +477,7 @@ python3 -m calcs.electrical_hv.transformer_sizing
 python3 -m calcs.electrical_hv.protection_grading
 python3 -m calcs.electrical_hv.arc_flash_ppe_check
 python3 -m calcs.electrical_hv.substation_earthing_touch_step
+python3 -m calcs.mechanical_piping.line_sizing_velocity_check
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -503,11 +530,13 @@ total-auto/
 │   │   ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
 │   │   ├── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
 │   │   └── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
-│   └── electrical_hv/                # FOUR MODULES BUILT — see below
-│       ├── transformer_sizing.py     # LV demand + growth margin vs candidate transformer rating, HV/LV full-load current
-│       ├── protection_grading.py     # IEC 60255-151 IDMT relay operating time + grading margin check
-│       ├── arc_flash_ppe_check.py    # Required PPE arc rating vs practical PPE limit (incident energy is a direct input)
-│       └── substation_earthing_touch_step.py  # Sverak grid resistance + IEEE 80 tolerable touch/step voltage (actual mesh/step voltage is a direct input)
+│   ├── electrical_hv/                # FOUR MODULES BUILT — see below
+│   │   ├── transformer_sizing.py     # LV demand + growth margin vs candidate transformer rating, HV/LV full-load current
+│   │   ├── protection_grading.py     # IEC 60255-151 IDMT relay operating time + grading margin check
+│   │   ├── arc_flash_ppe_check.py    # Required PPE arc rating vs practical PPE limit (incident energy is a direct input)
+│   │   └── substation_earthing_touch_step.py  # Sverak grid resistance + IEEE 80 tolerable touch/step voltage (actual mesh/step voltage is a direct input)
+│   └── mechanical_piping/            # FIRST MODULE BUILT — see below
+│       └── line_sizing_velocity_check.py  # Actual velocity vs API RP 14E erosional velocity limit + target range
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
@@ -515,7 +544,7 @@ total-auto/
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
 │   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; five calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance)
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; four calcs wired (transformer sizing, protection grading, HV arc flash PPE, substation earthing/touch-step)
-│   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
+│   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic); first calc wired (line sizing/velocity)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
 │   ├── graph.py                    # Interface() entries -> dependency graph, cycle detection, Mermaid
 │   ├── process_state.py            # Per-project resolution status -> what's unblocked/blocked
@@ -548,6 +577,7 @@ total-auto/
 │   ├── test_protection_grading.py  # Validates IEC 60255-151 IDMT operating time and grading margin arithmetic
 │   ├── test_hv_arc_flash_ppe_check.py  # Validates required PPE rating and practical-PPE-limit flagging
 │   ├── test_substation_earthing_touch_step.py  # Validates Sverak grid resistance and IEEE 80 tolerable touch/step voltage arithmetic
+│   ├── test_line_sizing_velocity_check.py  # Validates velocity/erosional velocity arithmetic and target-range flagging
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser
