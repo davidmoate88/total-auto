@@ -12,7 +12,7 @@ pieces are meant to connect once they're all built out.
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | Placeholder — README + pattern only |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks) | Placeholder — README + pattern only |
-| `basis_of_design/` | Discipline basis-of-design shape + civils and structural skeletons | **Shared shape + civils + structural built** (`core.py`, `render.py`, `civils.py`, `structural.py`) — LV electrical/HV electrical/mechanical piping BoDs not yet built, same pattern |
+| `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV electrical skeletons | **Shared shape + civils + structural + LV electrical built** — HV electrical/mechanical piping BoDs not yet built, same pattern |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
 | `comms/meeting_minutes/` | Transcript → structured minutes → actions | Data model + interface stub (`extract_minutes()` raises `NotImplementedError`) |
 | `comms/email_triage/` | Inbox summarization/prioritisation | Data model + interface stub (`triage_inbox()` raises `NotImplementedError`), gated on a connector |
@@ -75,11 +75,19 @@ Supply of Machinery (Safety) Regulations) for the access equipment's geometry
 and safety requirements — see `structural.py`'s docstring for the specific
 parts and the same "verify before use" caveat as the geotechnical module.
 
-For both, criteria, assumptions, and deliverables are deliberately left empty
-— this is architecture, not detail (see docs/examples/ for a generated look at
-each current output shape). Next in this same pattern, in the order agreed:
-**LV electrical**, then **HV electrical**, then **mechanical piping** — each
-as its own `basis_of_design/<discipline>.py` following the same structure.
+`electrical_lv.py` is the third, scoped to plant/industrial LV distribution
+(consistent with the access-steelwork/mechanical-piping context, not
+commercial building services): design standards and criteria, LV distribution
+and reticulation, earthing and bonding, motor control and switchgear, standby/
+backup power, lighting, small power and containment, hazardous area
+classification (ATEX/DSEAR, BS EN 60079 series — confirmed as relevant to this
+portfolio), and arc flash/electrical safety.
+
+For all three, criteria, assumptions, and deliverables are deliberately left
+empty — this is architecture, not detail (see docs/examples/ for a generated
+look at each current output shape). Next in this same pattern, in the order
+agreed: **HV electrical**, then **mechanical piping** — each as its own
+`basis_of_design/<discipline>.py` following the same structure.
 
 ## Design principles
 

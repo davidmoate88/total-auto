@@ -30,12 +30,14 @@ standard and National Annex before use.
 **Milestone 1a (current):** working discipline-by-discipline through a "basis of
 design" (BoD) — the document stating scope, standards, criteria, and interfaces for
 a discipline, distinct from a `calcs/` module that performs one specific calculation.
-Civils and structural are both built as 9-section skeletons
-(`basis_of_design/civils.py`, `basis_of_design/structural.py` — the latter scoped to
-industrial access steelwork: platforms, walkways, stairs, ladders, handrails, spanning
-both the structural Eurocodes and the machinery/access safety standards). LV
-electrical, HV electrical, and mechanical piping are next, in that agreed order. See
-`docs/examples/` for a generated look at each discipline's current output.
+Civils, structural, and LV electrical are all built as 9-section skeletons
+(`basis_of_design/civils.py`, `structural.py` — scoped to industrial access
+steelwork: platforms, walkways, stairs, ladders, handrails; `electrical_lv.py` —
+scoped to plant/industrial LV distribution including hazardous area classification).
+Each also carries risk flags (`core/risk.py`) wherever a permanent design implies a
+distinct, riskier construction-stage or compliance-sequencing condition. HV electrical
+and mechanical piping are next, in that agreed order. See `docs/examples/` for a
+generated look at each discipline's current output.
 
 ## Getting started
 
@@ -78,7 +80,8 @@ total-auto/
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
-│   └── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
+│   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
+│   └── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution
 ├── portfolio/                       # DATA MODEL ONLY — Project/Portfolio contract, no logic
 ├── comms/
 │   ├── meeting_minutes/             # DATA MODEL + interface stub (extract_minutes())

@@ -66,7 +66,16 @@ mechanical piping**.
       the structural Eurocodes (EN 1990/1991/1993) and the machinery/access
       safety standards (EN ISO 14122 series, Machinery Directive) — see
       `structural.py`'s docstring for the standards-verification caveat.
-- [ ] LV electrical basis of design skeleton.
+- [x] LV electrical basis of design skeleton — scoped to plant/industrial LV
+      distribution (not commercial building electrical services), consistent
+      with the civils/structural scope. 9 sections: design standards &
+      criteria, LV distribution & reticulation, earthing & bonding, motor
+      control & switchgear, standby/backup power, lighting, small power &
+      containment, hazardous area classification (ATEX/DSEAR, BS EN 60079
+      series — confirmed relevant to this portfolio), arc flash & electrical
+      safety. Flags temporary works risk on earthing/bonding (construction-
+      phase temporary supplies) and a code_compliance risk on hazardous area
+      classification (area classification must precede equipment selection).
 - [ ] HV electrical basis of design skeleton.
 - [ ] Mechanical piping basis of design skeleton.
 - [ ] Multi-storey/occupied-building structural elements (floor vibration,
