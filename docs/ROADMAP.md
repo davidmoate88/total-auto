@@ -632,6 +632,43 @@ plan, not a user manual.
       utilisation 0.9 PASS against a 20kN limit) and end-to-end in a real
       browser -- UI result (governing reaction 18kN at S2, no limit
       supplied) matched the CLI run exactly. 362/362 tests passing.
+- [x] UI: navigation by discipline + real cross-module handoffs -- with all
+      five disciplines built out (26 calc modules), `app.py`'s original
+      single flat row of 27 tabs (ground model + 26 modules) had become
+      the app's biggest usability problem in practice, not just in
+      principle -- the same scrolling/hunting friction showed up
+      repeatedly during this session's own browser verification passes.
+      A `st.sidebar.radio` discipline selector now scopes the main area
+      to one discipline's modules at a time (grouped by
+      `CalcModule.discipline`, a field every module already carried),
+      keeping each `st.tabs()` row to at most ~7. Separately, a
+      declarative `CALC_HANDOFFS` list in `app.py` now wires up the
+      cross-module handoffs several docstrings already describe (e.g.
+      `load_schedule_diversity.py` -> `cable_sizing_voltage_drop.py`,
+      `column_capacity.py`/`beam_capacity.py` -> `beam_column_interaction.py`)
+      -- previously only the ground-model -> bearing-resistance handoff
+      actually worked, hand-wired with its own session-state keys; every
+      other handoff was a docstring instruction the user had to act on
+      manually. A generic mechanism (`_apply_handoffs`) pushes a source
+      module's headline or a named term into the target module's prefill
+      store; the ground-model handoff was migrated onto the same
+      mechanism rather than left as a separate one. Getting this right
+      needed a genuine fix beyond the original bearing-prefill's widget-
+      key-versioning trick: with sidebar-scoped rendering and 26 modules,
+      a handoff's target isn't guaranteed to render in the same script
+      execution as its source (unlike ground model, always structurally
+      first) -- `render_calc_module_tab` now persists a submitted result
+      into session state and calls `st.rerun()` when a handoff fires, so
+      the next execution starts with an already-current prefill store
+      before any tab's widgets are built. This was found and fixed during
+      verification, not hypothetical: the first browser pass showed
+      `cable_sizing_voltage_drop.py`'s `design_current_a` silently staying
+      at 0.00 after running `load_schedule_diversity.py`, exactly the
+      registry-ordering/no-rerun failure mode described above. Re-verified
+      after the fix -- both the same-discipline handoff (LV -> LV) and the
+      cross-discipline handoff (LV -> HV) correctly prefilled. 362/362
+      tests passing (app.py has no direct pytest coverage; verification
+      was end-to-end in a real browser).
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text

@@ -1,20 +1,33 @@
 """
 Streamlit UI for total-auto's engineering calculation tools.
 
-Tabs:
-  1. Ground model interpreter — paste SPT/CPT/lab site investigation data per
-     stratum, get derived characteristic design parameters, hand off to the
-     bearing resistance calc.
-  2+. One tab per module in calcs.registry.CALC_REGISTRY, form auto-built from
-     the module's pydantic input model (see _render_calc_form) — per the
-     design principle in docs/ARCHITECTURE.md: "app.py just discovers
-     registered calc modules and renders a form + result for whichever one is
-     selected... adding a new discipline means adding a new module +
-     registering it — the app and report generator don't change." Previously
-     this only special-cased the geotechnical bearing calc directly; that's
-     now handled generically like every other registered module (still with
-     the ground-model-interpreter prefill handoff wired specifically for it,
-     since prefilling is inherently module-specific).
+Navigation: a sidebar discipline selector (Ground model interpreter,
+Geotechnical, Structural, Civils, Electrical (LV), Electrical (HV),
+Mechanical Piping) scopes the main area to that discipline's modules only,
+shown as `st.tabs()`. With 26 registered calc modules across six
+disciplines, one flat row of tabs (the original design) had become the
+single biggest usability problem in the app -- this groups by
+`CalcModule.discipline` (already a required field, no new metadata needed)
+so each tab row stays short (max ~7) regardless of how many more modules
+get added.
+
+Cross-module handoffs: several calc modules are explicitly designed to
+consume another module's output (e.g. `load_schedule_diversity.py`'s
+maximum demand current feeding `cable_sizing_voltage_drop.py`'s design
+current -- see those modules' docstrings for the full list). Previously
+only the ground-model-interpreter -> bearing-resistance handoff actually
+worked in the UI; `CALC_HANDOFFS` below declares the rest and a generic
+mechanism (`_apply_handoffs`) pushes values into a per-target-module
+prefill store after any source module's result is computed, keyed off the
+same "Set <field>?"-aware form-prefill support `_field_widget` already had
+for the ground-model case (now generalised rather than special-cased).
+
+One tab per module in calcs.registry.CALC_REGISTRY, form auto-built from
+the module's pydantic input model (see _field_widget) — per the design
+principle in docs/ARCHITECTURE.md: "app.py just discovers registered calc
+modules and renders a form + result for whichever one is selected...
+adding a new discipline means adding a new module + registering it — the
+app and report generator don't change."
 
 The generic form (_field_widget) introspects each pydantic v2 field's
 annotation, default, and constraint metadata (Ge/Gt/Le/Lt) to pick a
@@ -27,7 +40,7 @@ sentinel value that might itself fail validation (e.g. a gt=0 field can't
 default to 0 to mean "omit"). This trades the hand-laid-out columns/expanders
 the original bearing-resistance-specific tab had for genericity across every
 registered module — deliberate, since hand-laying-out a form per module
-doesn't scale to five (and growing) calc modules.
+doesn't scale to twenty-six (and growing) calc modules.
 
 Run with: streamlit run app.py
 """
@@ -50,9 +63,24 @@ from calcs.geotechnical.interpretation.text_input import (
     parse_lab_lines,
     parse_spt_lines,
 )
-from calcs.registry import CALC_REGISTRY
+from calcs.registry import CALC_REGISTRY, get_module
 from core.calc_base import CalcModule
 from core.report import render_report
+
+DISCIPLINE_ORDER = ["Geotechnical", "Structural", "Civils", "Electrical (LV)", "Electrical (HV)", "Mechanical Piping"]
+
+# Declarative calc-to-calc handoffs: (source_module_key, source_selector, target_module_key, target_field_name).
+# source_selector is the literal string "headline", or a Term.label to match exactly
+# among the source module's result.terms. Add an entry here whenever a module's
+# docstring says "feed this into <other module>'s <field>" -- see e.g.
+# calcs/electrical_lv/load_schedule_diversity.py, calcs/structural/column_capacity.py.
+CALC_HANDOFFS: list[tuple[str, str, str, str]] = [
+    ("electrical_lv_load_schedule_diversity", "headline", "electrical_lv_cable_sizing_voltage_drop", "design_current_a"),
+    ("electrical_lv_load_schedule_diversity", "S total (diversified demand, apparent power)", "electrical_hv_transformer_sizing", "lv_demand_kva"),
+    ("structural_beam_capacity_ec3", "Mc,Rd (bending resistance)", "structural_beam_column_interaction_ec3", "moment_resistance_y_my_rd_knm"),
+    ("structural_column_capacity_ec3", "[y-y] Nb,Rd", "structural_beam_column_interaction_ec3", "axial_buckling_resistance_y_nb_y_rd_kn"),
+    ("structural_column_capacity_ec3", "[z-z] Nb,Rd", "structural_beam_column_interaction_ec3", "axial_buckling_resistance_z_nb_z_rd_kn"),
+]
 
 
 def _extract_numeric_bounds(field_info) -> dict:
@@ -124,16 +152,52 @@ def _field_widget(field_name: str, field_info, prefill: dict, key_prefix: str):
     return st.text_area(label, value=str(value), help=help_text, key=key)
 
 
+def _prefill_store() -> dict[str, dict]:
+    return st.session_state.setdefault("calc_prefill", {})
+
+
+def _prefill_versions() -> dict[str, int]:
+    return st.session_state.setdefault("calc_prefill_version", {})
+
+
+def _apply_handoffs(source_key: str, result) -> list[CalcModule]:
+    """
+    After a module's result is computed, push any CALC_HANDOFFS values declared
+    from this module into the target module(s)' prefill store, keyed per field so
+    a target fed by multiple source modules (e.g. beam_column_interaction_ec3,
+    fed by both beam_capacity_ec3 and column_capacity_ec3) accumulates rather than
+    overwrites. Returns the target CalcModules that received a value, for a
+    user-facing notice.
+    """
+    store = _prefill_store()
+    versions = _prefill_versions()
+    targets: list[CalcModule] = []
+    for src_key, selector, target_key, target_field in CALC_HANDOFFS:
+        if src_key != source_key:
+            continue
+        if selector == "headline":
+            value = result.headline.value
+        else:
+            term = next((t for t in result.terms if t.label == selector), None)
+            if term is None:
+                continue
+            value = term.value
+        store.setdefault(target_key, {})[target_field] = value
+        versions[target_key] = versions.get(target_key, 0) + 1
+        targets.append(get_module(target_key))
+    return targets
+
+
 def render_calc_module_tab(module: CalcModule) -> None:
     st.subheader(module.name)
     st.caption(module.description)
 
-    prefill = st.session_state.get("bearing_prefill", {}) if module.key == BEARING_MODULE.key else {}
+    prefill = _prefill_store().get(module.key, {})
     # Widget `value=` only takes effect the first time a given key renders -- on later
     # reruns the widget keeps whatever the user last set, ignoring `value=` even if
     # `prefill` has since changed. Folding the prefill version into the key forces a
     # fresh widget (and therefore a fresh `value=`) each time a new prefill arrives.
-    prefill_version = st.session_state.get("bearing_prefill_version", 0) if prefill else 0
+    prefill_version = _prefill_versions().get(module.key, 0) if prefill else 0
     key_prefix = f"{module.key}__{prefill_version}"
 
     with st.form(f"calc_form__{module.key}__{prefill_version}"):
@@ -142,19 +206,38 @@ def render_calc_module_tab(module: CalcModule) -> None:
             values[field_name] = _field_widget(field_name, field_info, prefill, key_prefix=key_prefix)
         submitted = st.form_submit_button(f"Run: {module.name}")
 
-    if not submitted:
-        return
+    result_key = f"last_result__{module.key}"
 
-    try:
-        inputs = module.input_model(**values)
-    except ValidationError as exc:
-        st.error("Input validation failed:")
-        for err in exc.errors():
-            st.error(f"- {'.'.join(str(p) for p in err['loc'])}: {err['msg']}")
-        return
+    if submitted:
+        try:
+            inputs = module.input_model(**values)
+        except ValidationError as exc:
+            st.error("Input validation failed:")
+            for err in exc.errors():
+                st.error(f"- {'.'.join(str(p) for p in err['loc'])}: {err['msg']}")
+            st.session_state.pop(result_key, None)
+            return
 
-    result = module.calculate(inputs)
-    _render_result(module, inputs, result)
+        result = module.calculate(inputs)
+        handed_off_to = _apply_handoffs(module.key, result)
+        # Stash rather than render inline: a handoff needs an immediate st.rerun()
+        # below so any OTHER tab's widgets pick up the freshly-updated prefill store
+        # before THEIR value= is applied this run (module iteration order within a
+        # discipline, or which discipline is even selected, isn't guaranteed to put
+        # the source ahead of every target the way the ground-model prefill always
+        # was). st.rerun() discards the one-shot `submitted` flag, so the result has
+        # to survive in session_state to still render after the restart.
+        st.session_state[result_key] = (inputs, result, handed_off_to)
+        if handed_off_to:
+            st.rerun()
+
+    stored = st.session_state.get(result_key)
+    if stored:
+        inputs, result, handed_off_to = stored
+        _render_result(module, inputs, result)
+        if handed_off_to:
+            names = ", ".join(m.name for m in handed_off_to)
+            st.info(f"Value(s) handed off — prefilled into: {names}. Switch to that tab to use them.")
 
 
 def _render_result(module, inputs, result) -> None:
@@ -265,25 +348,43 @@ def render_ground_model_tab() -> None:
         for w in design_params.warnings:
             st.warning(w)
 
-        st.session_state["bearing_prefill"] = to_bearing_resistance_kwargs(design_params)
-        st.session_state["bearing_prefill_version"] = st.session_state.get("bearing_prefill_version", 0) + 1
-        st.success(f"Derived parameters saved — switch to the '{BEARING_MODULE.name}' tab; they'll be pre-filled.")
+        # Ground-model interpretation re-derives the full set of bearing-resistance
+        # prefill fields atomically each time, so replace rather than merge (unlike
+        # _apply_handoffs' per-field accumulation for other targets).
+        _prefill_store()[BEARING_MODULE.key] = to_bearing_resistance_kwargs(design_params)
+        _prefill_versions()[BEARING_MODULE.key] = _prefill_versions().get(BEARING_MODULE.key, 0) + 1
+        st.success(f"Derived parameters saved — switch to the '{BEARING_MODULE.name}' tab (under Geotechnical); they'll be pre-filled.")
+
+
+def _modules_by_discipline() -> dict[str, list[CalcModule]]:
+    grouped: dict[str, list[CalcModule]] = {}
+    for module in CALC_REGISTRY:
+        grouped.setdefault(module.discipline, []).append(module)
+    return grouped
 
 
 def main() -> None:
-    st.set_page_config(page_title="total-auto", layout="centered")
+    st.set_page_config(page_title="total-auto", layout="wide")
     st.title("total-auto — engineering calculation tools")
     st.caption(
-        "Ground model interpretation feeds the geotechnical bearing calc; every other tab is a "
-        "calc module discovered from calcs.registry.CALC_REGISTRY. See docs/ROADMAP.md for what's "
-        "planned beyond this."
+        "Ground model interpretation feeds the geotechnical bearing calc; every other module is "
+        "discovered from calcs.registry.CALC_REGISTRY and grouped by discipline in the sidebar. "
+        "See docs/ROADMAP.md for what's planned beyond this."
     )
 
-    tab_labels = ["Ground model interpreter"] + [module.name for module in CALC_REGISTRY]
-    tabs = st.tabs(tab_labels)
-    with tabs[0]:
+    grouped = _modules_by_discipline()
+    discipline_options = [d for d in DISCIPLINE_ORDER if grouped.get(d)]
+    sidebar_labels = ["Ground model interpreter"] + [f"{d} ({len(grouped[d])})" for d in discipline_options]
+    selected = st.sidebar.radio("Discipline", sidebar_labels)
+
+    if selected == "Ground model interpreter":
         render_ground_model_tab()
-    for tab, module in zip(tabs[1:], CALC_REGISTRY):
+        return
+
+    discipline = discipline_options[sidebar_labels.index(selected) - 1]
+    modules = grouped[discipline]
+    tabs = st.tabs([module.name for module in modules])
+    for tab, module in zip(tabs, modules):
         with tab:
             render_calc_module_tab(module)
 

@@ -238,15 +238,63 @@ genericity across five (and growing) modules rather than bespoke layout code
 per module; nothing stops a later pass adding layout hints to the generic
 renderer if the flat form proves annoying in practice.
 
-The ground-model-interpreter → bearing-resistance prefill handoff (unique to
-those two tabs — no other module has an upstream data source yet) required
-one specific fix: Streamlit widgets only apply their `value=` argument the
-*first* time a given widget `key` renders; on a later rerun the widget keeps
-whatever the user last set, even if the caller passes a different `value=`.
-A `bearing_prefill_version` counter (incremented each time the ground model
-tab saves a new prefill) is folded into the bearing module's widget keys, so
-a new prefill genuinely gets fresh widgets rather than being silently
-ignored. This wasn't a hypothetical — it reproduced during verification.
+**Navigation by discipline.** With 26 registered calc modules across six
+disciplines, one flat `st.tabs()` row (the original design) had become the
+app's single biggest usability problem — the same friction showed up
+repeatedly during this session's own browser-based verification passes
+(scrolling and hunting for a specific tab among 20+). `app.py` now groups
+`CALC_REGISTRY` by `CalcModule.discipline` (`_modules_by_discipline`) and
+puts a `st.sidebar.radio` discipline selector in front of the main content
+area; only the selected discipline's modules render as `st.tabs()`, keeping
+each row to at most ~7. `CalcModule.discipline` was already a required
+field on every module (used for exactly this from the start, just not
+acted on) — no new metadata needed.
+
+**Cross-module handoffs.** Several calc modules are explicitly designed to
+consume another module's output — e.g. `load_schedule_diversity.py`'s
+maximum demand current feeding `cable_sizing_voltage_drop.py`'s design
+current, or `column_capacity.py`/`beam_capacity.py`'s resistances feeding
+`beam_column_interaction.py`. Previously only the ground-model-interpreter →
+bearing-resistance handoff actually worked in the UI (hand-wired with its
+own `bearing_prefill`/`bearing_prefill_version` session-state keys); every
+other documented handoff was purely a docstring instruction the user had to
+carry between tabs by hand. `CALC_HANDOFFS` in `app.py` now declares each one
+as `(source_module_key, source_selector, target_module_key, target_field)`
+— `source_selector` is either `"headline"` or a `Term.label` to match
+exactly among the source's `result.terms` — and a generic mechanism
+(`_apply_handoffs`) pushes the value into a per-target-module prefill store
+(`_prefill_store()`/`_prefill_versions()`, replacing the old
+bearing-specific pair) after any source module's result is computed. The
+ground-model handoff was migrated onto this same generic store rather than
+kept as a separate mechanism.
+
+Two Streamlit behaviours had to be worked around together, not separately,
+to make this actually work (both reproduced during verification, not
+hypothetical):
+
+1. Widgets only apply their `value=` argument the *first* time a given
+   widget `key` renders; a later rerun keeps whatever the user last set
+   regardless of a changed `value=`. Folding a per-target `prefill_version`
+   counter into that module's widget keys forces a genuinely fresh widget
+   (and therefore a fresh `value=`) whenever a new prefill arrives — this
+   part was already true of the original bearing-specific mechanism.
+2. What's new: `CALC_REGISTRY` iteration order (and, since the sidebar
+   scopes rendering to one discipline at a time, sometimes *whether a
+   target renders in the same script execution at all*) is no longer
+   guaranteed to put a handoff's source ahead of its target the way the
+   ground-model case always structurally did (ground model was always
+   tab/discipline zero). A target rendered earlier in the same run than
+   its source — or in a different discipline the user isn't currently
+   viewing — would read a stale prefill store and silently miss the
+   handoff, with no further Streamlit rerun to fix it (switching tabs is
+   client-side only; it doesn't re-invoke the script). `render_calc_module_tab`
+   now persists a submitted result into `st.session_state["last_result__<key>"]`
+   and calls `st.rerun()` immediately after any handoff fires, so the
+   *next* script execution starts with an already-current prefill store
+   before any tab's widgets are built — the persisted result is what lets
+   the source module's own tab keep showing its result across that
+   self-triggered rerun, since `st.form_submit_button`'s `submitted` flag
+   is a one-shot signal that goes back to `False` on the very next run.
 
 ## Civils calcs (`calcs/civil/`) and cross-domain DA1 reuse
 

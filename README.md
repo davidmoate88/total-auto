@@ -500,6 +500,42 @@ being explicit that it's a single uniform limit, not a per-support
 capacity lookup. This completes every named `calculations_required` entry
 in `basis_of_design/mechanical_piping.py`.
 
+**UI: navigation by discipline, and real cross-module handoffs.** With all
+five disciplines built out, `app.py`'s original single flat row of 21 tabs
+(now 27 — ground model interpreter plus 26 calc modules) had become the
+app's biggest usability problem in practice, not just in principle — the
+same scrolling/hunting friction showed up repeatedly during this session's
+own browser-based verification passes. Two changes, requested and built
+together since they're related (both about actually using the modules
+that exist, not just having them exist):
+- **Navigation**: a sidebar discipline selector (`st.sidebar.radio`)
+  scopes the main area to one discipline's modules at a time, shown as a
+  short `st.tabs()` row (max ~7 instead of 27). Grouping is by
+  `CalcModule.discipline`, a field every module already carried — no new
+  metadata needed, just acting on what was already there.
+- **Cross-module handoffs**: several module docstrings already say "feed
+  this into `<other module>`'s `<field>`" (e.g. `load_schedule_diversity.py`
+  → `cable_sizing_voltage_drop.py`, `column_capacity.py`/`beam_capacity.py`
+  → `beam_column_interaction.py`), but previously only the ground-model
+  → bearing-resistance handoff actually worked in the UI — every other one
+  was a docstring instruction the user had to act on by hand, copying a
+  number between tabs. A declarative `CALC_HANDOFFS` list now drives a
+  generic mechanism that pushes a source module's headline or a named term
+  into the target module's prefill store automatically. Getting this right
+  needed more than the widget-key-versioning trick the original bearing
+  prefill already used — with 26 modules and sidebar-scoped rendering, a
+  handoff's target isn't guaranteed to render in the same script execution
+  as its source anymore (unlike the ground-model case, which was always
+  structurally first). `render_calc_module_tab` now persists a submitted
+  result into session state and calls `st.rerun()` when a handoff fires,
+  so the next execution starts with an already-current prefill store
+  before any tab's widgets are built. Verified end-to-end in a real
+  browser: running `load_schedule_diversity.py` correctly prefilled both
+  `cable_sizing_voltage_drop.py` (same discipline) and
+  `transformer_sizing.py` (a different discipline entirely) — the exact
+  case that would have silently failed without the `st.rerun()` fix, and
+  did fail on the first verification pass before it was added.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs, motor starting for
 electrical LV)
@@ -561,7 +597,7 @@ pytest
 
 ```
 total-auto/
-├── app.py                          # Streamlit UI — ground model interpreter + auto-generated form per calcs.registry module
+├── app.py                          # Streamlit UI — sidebar discipline nav, auto-generated form per calcs.registry module, CALC_HANDOFFS cross-module prefill
 ├── core/
 │   ├── calc_base.py                # Shared interfaces: CalcInput, CalcResult, registry
 │   ├── report.py                   # Turns a CalcResult into a review-ready markdown sheet
@@ -681,6 +717,11 @@ total-auto/
 - **The UI is a thin layer.** `app.py` just discovers registered calc modules and
   renders a form + result for whichever one is selected. Adding a new discipline means
   adding a new module + registering it — the app and report generator don't change.
+  Navigation groups by `CalcModule.discipline` (a sidebar selector scopes each
+  `st.tabs()` row to one discipline, ~7 tabs max instead of one flat row of 26+) and
+  declared cross-module handoffs (`CALC_HANDOFFS`) auto-prefill a target module's
+  form from a source module's result — both driven by metadata the modules already
+  carry, not new per-module UI code.
 
 ## Continuing this project
 
