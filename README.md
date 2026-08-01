@@ -262,10 +262,34 @@ shock-risk consequence rather than a documentation/procedural one, matching
 how `beam_capacity.py` already uses the same category for a structural
 overstress.
 
+**Fourth electrical (LV) module**: `calcs/electrical_lv/arc_flash_ppe_check.py`
+— answers `arc_flash_and_electrical_safety`'s "PPE category framework"
+requirement, but with a materially different scope decision from every
+other module in this repo: it does NOT calculate arc flash incident energy.
+Every other calc here embeds a formula this author has high independent-
+verification confidence in and flags individual uncertain *values* as
+direct inputs; arc flash incident energy is different in kind, not degree —
+the governing method (IEEE 1584-2018) is a multi-parameter empirical
+regression with equipment-class-specific coefficients not safely
+reproducible from memory, and unlike a failed structural/geotechnical check
+(caught by review before anyone is exposed to it), a wrong incident energy
+figure directly sets the PPE a worker wears for live work — a real,
+immediate injury pathway no other calc in this repo has. So
+`incident_energy_cal_cm2` itself is the required direct input (from an
+external IEEE 1584 study), and the module does only the safe, well-defined
+part downstream of that: classifies it into illustrative PPE category bands
+(again direct inputs with illustrative defaults, since NFPA 70E edition
+details are exactly the "flag, don't guess" territory this repo already
+treats BS 7671 tables the same way) and raises a critical `safety` flag
+above a dangerous-energy threshold, recommending de-energised work over
+PPE alone. This completes the "circuit design trio plus safety" set for
+`calcs/electrical_lv/` at four modules, skipping motor starting for now per
+project direction.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, the beam-column interaction check, highways/pavement
-civils calcs, motor starting/arc flash for electrical LV, HV electrical
-calcs, mechanical piping calcs) plus independent verification of every
+civils calcs, motor starting for electrical LV, HV electrical calcs,
+mechanical piping calcs) plus independent verification of every
 illustrative value flagged throughout the detail passes.
 
 ## Getting started
@@ -294,6 +318,7 @@ python3 -m calcs.civil.slope_stability
 python3 -m calcs.electrical_lv.cable_sizing_voltage_drop
 python3 -m calcs.electrical_lv.load_schedule_diversity
 python3 -m calcs.electrical_lv.earth_fault_loop_impedance
+python3 -m calcs.electrical_lv.arc_flash_ppe_check
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -339,16 +364,17 @@ total-auto/
 │   │   ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
 │   │   ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
 │   │   └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
-│   └── electrical_lv/                # THREE MODULES BUILT — see below
+│   └── electrical_lv/                # FOUR MODULES BUILT — see below
 │       ├── cable_sizing_voltage_drop.py    # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
 │       ├── load_schedule_diversity.py      # P/Q load aggregation -> maximum demand current
-│       └── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
+│       ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
+│       └── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
-│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; three calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance)
+│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; four calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category)
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
@@ -376,6 +402,7 @@ total-auto/
 │   ├── test_cable_sizing_voltage_drop.py  # Validates BS 7671 Reg 433.1.1 conditions and voltage drop arithmetic
 │   ├── test_load_schedule_diversity.py    # Validates P/Q load aggregation and paste parsing
 │   ├── test_earth_fault_loop_impedance.py # Validates Zs = Ze+(R1+R2)*factor arithmetic and utilisation check
+│   ├── test_arc_flash_ppe_check.py        # Validates PPE category banding and dangerous-energy flagging
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

@@ -23,9 +23,10 @@ section. Calculation logic itself (the corresponding `calcs/electrical_lv/`
 modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
 module exists (see calcs/electrical_lv/cable_sizing_voltage_drop.py,
-calcs/electrical_lv/load_schedule_diversity.py, and
-calcs/electrical_lv/earth_fault_loop_impedance.py for the first three); the
-rest remain unset until built.
+calcs/electrical_lv/load_schedule_diversity.py,
+calcs/electrical_lv/earth_fault_loop_impedance.py, and
+calcs/electrical_lv/arc_flash_ppe_check.py for the first four); the rest
+remain unset until built.
 """
 
 from __future__ import annotations
@@ -338,6 +339,14 @@ def build_electrical_lv_bod_skeleton(project_reference: Optional[str] = None) ->
                 Standard(code="HSG85", title="Electricity at work — safe working practices", notes="HSE guidance."),
                 Standard(code="BS EN 50110-1", title="Operation of electrical installations"),
                 Standard(code="IEEE 1584", notes="Arc flash hazard calculation — widely used internationally though not a UK Eurocode/BS; confirm applicability/preference for this portfolio."),
+            ],
+            calculations_required=[
+                CalculationRequirement(
+                    name="PPE category check",
+                    description="Classifies an externally-supplied IEEE 1584 incident energy figure into an illustrative PPE category band and raises a critical safety flag above a dangerous-energy threshold, calcs/electrical_lv/arc_flash_ppe_check.py. Deliberately does NOT calculate incident energy itself -- IEEE 1584's empirical model is not safely reproducible from memory and this is a direct worker-safety figure, not a design-review-catchable error -- see that module's docstring for the full reasoning.",
+                    standard_reference="IEEE 1584 / NFPA 70E",
+                    calc_module_reference="electrical_lv_arc_flash_ppe_check",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Arc flash study trigger", value="all boards/MCCs above a minimum prospective fault level (to be confirmed)", notes="Threshold below which an arc flash study is not considered necessary — set per the project's electrical safety policy/client standard."),

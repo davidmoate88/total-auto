@@ -365,6 +365,30 @@ plan, not a user manual.
       verified against a hand calculation (utilisation 0.4983, PASS) and
       end-to-end in a real browser -- UI result matched the CLI run
       exactly. 261/261 tests passing.
+- [x] Fourth electrical (LV) calc module:
+      `calcs/electrical_lv/arc_flash_ppe_check.py` -- answers
+      `arc_flash_and_electrical_safety`'s "PPE category framework"
+      `CalculationRequirement` (newly added to that section), but with a
+      deliberately different scope from every other module built so far:
+      it does NOT calculate arc flash incident energy. IEEE 1584-2018's
+      governing method is a multi-parameter empirical regression with
+      equipment-class-specific coefficients not safely reproducible from
+      memory, and unlike a failed structural/geotechnical check (caught by
+      review before anyone is exposed to it), a wrong incident energy
+      figure directly sets a worker's PPE for live work -- a real,
+      immediate injury pathway distinct from every other calc in this
+      repo. So `incident_energy_cal_cm2` is the required direct input
+      (from an external IEEE 1584 study), and the module does only the
+      safe part downstream: PPE category classification into illustrative
+      bands (also direct inputs, since NFPA 70E's current-edition banding
+      is the same "flag, don't guess" territory as BS 7671's tables) and a
+      critical `safety` flag above a dangerous-energy threshold (default
+      40 cal/cm^2), recommending de-energised work over PPE alone. Motor
+      starting explicitly skipped per project direction ("do arc flash,
+      ignore motor starting"). 11 new tests, verified against manual band
+      classification (6.5 cal/cm^2 -> Category 2, medium safety flag) and
+      end-to-end in a real browser -- UI result matched the CLI run
+      exactly. 272/272 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -507,23 +531,25 @@ mechanical piping**.
       civils has its first six (`lateral_earth_pressure.py`,
       `retaining_wall_stability.py`, `foul_drainage.py`,
       `cut_fill_balance.py`, `surface_water_discharge.py`,
-      `slope_stability.py`), and electrical_lv has its first three
+      `slope_stability.py`), and electrical_lv has its first four
       (`cable_sizing_voltage_drop.py`, BS 7671 Reg 433.1.1 current-carrying
       capacity check + Appendix 4 voltage drop check -- tabulated current
       rating and mV/A/m are required direct inputs, not derived, since BS
       7671's cable tables are installation-method-specific and amendment-
       revised; `load_schedule_diversity.py`, P/Q real+reactive power load
       aggregation to a maximum demand current, feeding its result straight
-      into the first module's `design_current_a`; and
-      `earth_fault_loop_impedance.py`, BS 7671 Chapter 41 Zs check against
-      the tabulated maximum for automatic disconnection) -- see Milestone 1
-      above for all.
+      into the first module's `design_current_a`; `earth_fault_loop_impedance.py`,
+      BS 7671 Chapter 41 Zs check against the tabulated maximum for
+      automatic disconnection; and `arc_flash_ppe_check.py`, PPE category
+      classification from an externally-supplied IEEE 1584 incident energy
+      figure -- deliberately does NOT calculate incident energy itself,
+      see that module's docstring) -- see Milestone 1 above for all.
       Remaining: the beam-column combined bending+axial interaction, block
       tearing, base plate bending, civils attenuation volume sizing (open
       item above -- needs the FSR/FEH rainfall model) and highways/pavement
-      calcs, the rest of electrical_lv (motor starting, arc flash), and all
-      calcs for electrical_hv/mechanical_piping. Independent verification
-      of every
+      calcs, electrical_lv's motor starting (skipped per project direction
+      for now), and all calcs for electrical_hv/mechanical_piping.
+      Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current
       standard texts/project requirements is still outstanding for all
