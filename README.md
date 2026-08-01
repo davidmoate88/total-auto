@@ -350,11 +350,32 @@ module only checks it. `growth_margin_percent` is an illustrative default
 parallel-transformer redundancy or apply IEC 60076-7 thermal derating — see
 module docstring.
 
+**Second electrical (HV) module**: `calcs/electrical_hv/protection_grading.py`
+— answers `protection_and_control`'s "Protection discrimination/grading
+study" requirement: IDMT (Inverse Definite Minimum Time) relay operating
+times for an upstream/downstream pair, checked for adequate grading
+margin. Unlike this module's neighbours, the governing physics here — the
+IEC 60255-151 operating-time formula and its standard curve constants
+(Standard/Very/Extremely/Long Time Inverse) — is embedded directly rather
+than flagged, the same treatment `column_capacity.py`'s Table 6.1
+imperfection factors already get: these curve constants are among the most
+consistently reproduced figures in protection engineering literature,
+effectively unchanged across decades/manufacturers, unlike BS 7671's
+installation-specific cable tables or IEEE 1584's equipment-class-specific
+regression. What genuinely IS project-specific — each relay's pickup
+current and TMS (design choices) and the prospective fault current (from a
+separate DNO/network fault level study, per this discipline's own stated
+criterion) — are required direct inputs. Deliberately scoped to ONE
+relay pair at ONE fault current, not a full multi-stage study across the
+fault current range, since the critical grading point can shift between
+different curve shapes/settings — flagged explicitly rather than
+overclaimed.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs, motor starting for
-electrical LV, more electrical HV calcs, mechanical piping calcs) plus
-independent verification of every illustrative value flagged throughout
-the detail passes.
+electrical LV, HV substation earth grid design/HV arc flash, mechanical
+piping calcs) plus independent verification of every illustrative value
+flagged throughout the detail passes.
 
 ## Getting started
 
@@ -386,6 +407,7 @@ python3 -m calcs.electrical_lv.earth_fault_loop_impedance
 python3 -m calcs.electrical_lv.arc_flash_ppe_check
 python3 -m calcs.electrical_lv.earth_electrode_resistance
 python3 -m calcs.electrical_hv.transformer_sizing
+python3 -m calcs.electrical_hv.protection_grading
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -438,15 +460,16 @@ total-auto/
 │   │   ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
 │   │   ├── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
 │   │   └── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
-│   └── electrical_hv/                # FIRST MODULE BUILT — see below
-│       └── transformer_sizing.py     # LV demand + growth margin vs candidate transformer rating, HV/LV full-load current
+│   └── electrical_hv/                # TWO MODULES BUILT — see below
+│       ├── transformer_sizing.py     # LV demand + growth margin vs candidate transformer rating, HV/LV full-load current
+│       └── protection_grading.py     # IEC 60255-151 IDMT relay operating time + grading margin check
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
 │   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; five calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance)
-│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; first calc wired (transformer sizing)
+│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; two calcs wired (transformer sizing, protection grading)
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
 │   ├── graph.py                    # Interface() entries -> dependency graph, cycle detection, Mermaid
@@ -477,6 +500,7 @@ total-auto/
 │   ├── test_arc_flash_ppe_check.py        # Validates PPE category banding and dangerous-energy flagging
 │   ├── test_earth_electrode_resistance.py # Validates Dwight's formula arithmetic and utilisation check
 │   ├── test_transformer_sizing.py  # Validates required capacity/utilisation and full-load current arithmetic
+│   ├── test_protection_grading.py  # Validates IEC 60255-151 IDMT operating time and grading margin arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

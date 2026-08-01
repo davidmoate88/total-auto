@@ -18,7 +18,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Six modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `beam_column_interaction.py` (EN 1993-1-1 SS6.3.3 combined bending+axial interaction, equations 6.61/6.62 — k-factors are required direct inputs, see below), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Block tearing, base plate bending, and moment connections not yet built |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Six modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it), `slope_stability.py` (Fellenius Method of Slices, both DA1 combinations, slice geometry as a direct input — see below). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items) and highways/pavement calcs not yet built |
 | `calcs/electrical_lv/` | LV electrical calc modules | **Five modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance). All verified, all wired into the Streamlit UI. Motor starting skipped per project direction |
-| `calcs/electrical_hv/` | HV electrical calc modules | **First module built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output — see below). Verified, wired into the Streamlit UI. Protection discrimination/grading, substation earth grid design, and HV arc flash not yet built |
+| `calcs/electrical_hv/` | HV electrical calc modules | **Two modules built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output), `protection_grading.py` (IEC 60255-151 IDMT relay operating times, upstream/downstream grading margin check — curve constants embedded directly, unlike this discipline's other modules, see below). Both verified, both wired into the Streamlit UI. Substation earth grid design and HV arc flash not yet built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are being built incrementally |
 | `integration/` | Cross-discipline dependency graph, resolution-state tracking, open-items extraction, and the combined master document | **Built** — dependency graph derived from the 33 `Interface` entries already declared across the five disciplines (44 sections); one discipline-level cycle detected (civils/electrical_lv/electrical_hv/mechanical_piping). See below. |
 | `portfolio/` | Project portfolio: cost, programme, risk, constraints, contacts, feasibility | Data model only (`models.py`), no logic |
@@ -516,6 +516,33 @@ no table lookups involved. Explicitly out of scope: N-1 parallel-transformer
 redundancy sizing and IEC 60076-7 thermal/ambient loading derating, both
 genuinely different (and more involved) calculations than a single-unit
 nameplate-rating check.
+
+The second `calcs/electrical_hv/` module, `protection_grading.py`, answers
+`protection_and_control`'s "Protection discrimination/grading study"
+`CalculationRequirement`: IDMT (Inverse Definite Minimum Time) relay
+operating times for an upstream/downstream pair, checked for adequate
+grading margin. Notably, this is the first `calcs/electrical_hv/` module
+where the governing PHYSICS itself is embedded with high confidence rather
+than flagged as a direct input -- the IEC 60255-151 operating-time formula
+(`t = TMS*k/((I/Is)^alpha - 1)`) and its four standard curve constants
+(Standard/Very/Extremely/Long Time Inverse) get the same treatment as
+`column_capacity.py`'s Table 6.1 imperfection factors: a small, genuinely
+universal lookup embedded directly, not required as input, because these
+specific constants are about as consistently reproduced across protection
+engineering literature and decades of manufacturer practice as a constant
+gets -- unlike BS 7671's installation-method-specific cable tables or IEEE
+1584's equipment-class-specific empirical regression, both of which
+required the opposite treatment in this discipline's LV counterpart. What
+IS genuinely project-specific here -- each relay's pickup current and TMS
+(design choices, not universal constants) and the prospective fault
+current (from a separate DNO/network fault level study, per
+`design_standards_and_criteria`'s own stated criterion) -- are required
+direct inputs. Deliberately scoped to ONE relay pair at ONE fault current,
+not a full multi-stage study across the fault current range, since the
+margin between two different curve shapes/TMS settings isn't necessarily
+monotonic with fault current -- the critical grading point checked here
+may not be the actual worst case across the full range, and the module
+says so explicitly rather than implying full coverage.
 
 ## Design principles
 

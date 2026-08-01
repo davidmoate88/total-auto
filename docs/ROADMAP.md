@@ -461,6 +461,34 @@ plan, not a user manual.
       -> utilisation 0.312 PASS, HV current 5.25A, LV current 144A) and
       end-to-end in a real browser -- UI result matched the CLI run
       exactly. 297/297 tests passing.
+- [x] Second electrical (HV) calc module:
+      `calcs/electrical_hv/protection_grading.py` -- answers
+      `protection_and_control`'s "Protection discrimination/grading study"
+      `CalculationRequirement`: IEC 60255-151 IDMT relay operating times
+      for an upstream/downstream pair, checked for adequate grading
+      margin. Notably the first module in this discipline where the
+      governing physics is embedded rather than flagged -- the IDMT
+      operating-time formula and its four standard curve constants
+      (Standard/Very/Extremely/Long Time Inverse) get the same treatment
+      as `column_capacity.py`'s Table 6.1 imperfection factors: a small,
+      genuinely universal lookup, since these specific constants are about
+      as consistently reproduced across protection engineering literature
+      as a constant gets, unlike BS 7671's installation-specific cable
+      tables or IEEE 1584's equipment-class-specific regression (both of
+      which required the opposite "flag it" treatment elsewhere in this
+      discipline). What's genuinely project-specific -- each relay's
+      pickup current/TMS (design choices) and the prospective fault
+      current (from a separate DNO/network fault level study, per this
+      discipline's own criterion) -- are required direct inputs.
+      Deliberately scoped to ONE relay pair at ONE fault current, not a
+      full multi-stage study across the fault current range, since the
+      margin between different curve shapes/settings isn't necessarily
+      monotonic with fault current -- flagged explicitly, not overclaimed.
+      9 new tests, verified against a hand calculation (SI curve,
+      downstream Is=100A/TMS=0.1, upstream Is=200A/TMS=0.2, at 2000A ->
+      t_down=0.227s, t_up=0.594s, margin=0.367s, PASS against a 0.3s
+      requirement) and end-to-end in a real browser -- UI result matched
+      the CLI run exactly. 306/306 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -618,18 +646,22 @@ mechanical piping**.
       `earth_electrode_resistance.py`, Dwight's formula for a single
       vertical driven earth rod, closing the gap between circuit-level
       earth fault protection and the actual earth electrode -- see that
-      module's docstring), and electrical_hv has its first
+      module's docstring), and electrical_hv has its first two
       (`transformer_sizing.py`, candidate transformer rating checked
       against LV demand plus a growth margin, HV/LV full-load current --
       the first cross-discipline calc-to-calc handoff, taking LV demand
-      directly from `load_schedule_diversity.py`'s output) -- see
+      directly from `load_schedule_diversity.py`'s output; and
+      `protection_grading.py`, IEC 60255-151 IDMT relay operating times
+      and grading margin check -- the curve constants themselves are
+      embedded, unlike this discipline's other modules, since they're
+      about as universal as protection engineering constants get) -- see
       Milestone 1 above for all.
       Remaining: block tearing, base plate bending, civils attenuation
       volume sizing (open item above -- needs the FSR/FEH rainfall model)
       and highways/pavement calcs, electrical_lv's motor starting (skipped
       per project direction for now), the rest of electrical_hv
-      (protection discrimination/grading, substation earth grid design,
-      HV arc flash), and all mechanical_piping calcs.
+      (substation earth grid design, HV arc flash), and all
+      mechanical_piping calcs.
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current

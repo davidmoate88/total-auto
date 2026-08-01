@@ -23,8 +23,9 @@ criteria, assumptions, exclusions, and deliverables are now populated per
 section. Calculation logic itself (the corresponding `calcs/electrical_hv/`
 modules) is being built incrementally -- `calculations_required` entries
 name what's needed and `calc_module_reference` is set once the matching
-module exists (see calcs/electrical_hv/transformer_sizing.py for the
-first one); the rest remain unset until built.
+module exists (see calcs/electrical_hv/transformer_sizing.py and
+calcs/electrical_hv/protection_grading.py for the first two); the rest
+remain unset until built.
 """
 
 from __future__ import annotations
@@ -208,7 +209,12 @@ def build_electrical_hv_bod_skeleton(project_reference: Optional[str] = None) ->
                 Standard(code="BS EN 60255 series", title="Measuring relays and protection equipment"),
             ],
             calculations_required=[
-                CalculationRequirement(name="Protection discrimination/grading study", description="Confirms protection devices operate selectively across the HV/LV system."),
+                CalculationRequirement(
+                    name="Protection discrimination/grading study",
+                    description="Confirms protection devices operate selectively across the HV/LV system. IEC 60255-151 IDMT relay operating times for an upstream/downstream pair at a stated fault current, checked for adequate grading margin, calcs/electrical_hv/protection_grading.py. One relay pair at one fault current only -- not a full multi-stage study across the fault current range, see that module's docstring.",
+                    standard_reference="IEC 60255-151",
+                    calc_module_reference="electrical_hv_protection_grading",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Protection grading margin", value="0.2–0.4", unit="s", notes="Typical discrimination margin between successive protection stages — confirm against the project's protection philosophy and relay manufacturer's recommendations."),
