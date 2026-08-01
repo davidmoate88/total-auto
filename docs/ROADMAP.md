@@ -291,6 +291,31 @@ plan, not a user manual.
       and `retaining_structures` -- civils now has working calcs for every
       section except surface water/SuDS's attenuation volume sizing (open
       item above) and highways/pavement (not yet scoped with any calc).
+- [x] First electrical (LV) calc module:
+      `calcs/electrical_lv/cable_sizing_voltage_drop.py` -- BS 7671
+      Regulation 433.1.1 current-carrying capacity check (`Ib<=In<=Iz`,
+      `I2<=1.45*Iz`) and Appendix 4 voltage drop percentage check for a
+      single cable run, answering `lv_distribution_and_reticulation`'s
+      "Cable sizing and voltage drop" `CalculationRequirement`. First
+      module outside civils/structural/geotechnical, and first module in
+      a new `calcs/electrical_lv/` package. Extends the "flag, don't guess"
+      discipline one level further than `base_plate.py`/
+      `surface_water_discharge.py`: BS 7671's cable current-rating and
+      voltage-drop tables (Appendix 4) are installation-method- and
+      cable-construction-specific and revised between amendments, so none
+      of it is embedded -- the tabulated current rating (It) and mV/A/m
+      figure are both required direct inputs. What IS implemented
+      independently is the arithmetic BS 7671 applies on top of those
+      tabulated values: `Iz = It*Ca*Cg*Ci*Cx` correction-factor derating,
+      the three Regulation 433.1.1 conditions, and the voltage drop
+      percentage check. The protective device's effective operation
+      current (I2) defaults to `1.45*In` (standard BS EN 60898/61009 MCB
+      assumption, BS 7671 Table 3A) if not supplied, with a warning --
+      other device types (e.g. BS 3036 fuses) need I2 supplied directly.
+      11 new tests, verified against a hand calculation (governing
+      utilisation 0.9456, current-carrying capacity governing) and
+      end-to-end in a real browser -- UI result matched the CLI run
+      exactly. 238/238 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -433,12 +458,18 @@ mechanical piping**.
       civils has its first six (`lateral_earth_pressure.py`,
       `retaining_wall_stability.py`, `foul_drainage.py`,
       `cut_fill_balance.py`, `surface_water_discharge.py`,
-      `slope_stability.py`) -- see Milestone 1 above for all.
+      `slope_stability.py`), and electrical_lv has its first
+      (`cable_sizing_voltage_drop.py`, BS 7671 Reg 433.1.1 current-carrying
+      capacity check + Appendix 4 voltage drop check -- tabulated current
+      rating and mV/A/m are required direct inputs, not derived, since BS
+      7671's cable tables are installation-method-specific and amendment-
+      revised) -- see Milestone 1 above for all.
       Remaining: the beam-column combined bending+axial interaction, block
       tearing, base plate bending, civils attenuation volume sizing (open
       item above -- needs the FSR/FEH rainfall model) and highways/pavement
-      calcs, and all calcs for electrical_lv/electrical_hv/
-      mechanical_piping. Independent verification of every
+      calcs, the rest of electrical_lv (load schedule/diversity, motor
+      starting, earth fault loop impedance, arc flash), and all calcs for
+      electrical_hv/mechanical_piping. Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current
       standard texts/project requirements is still outstanding for all

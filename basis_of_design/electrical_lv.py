@@ -20,8 +20,10 @@ being relied on.
 This is the detail pass (2nd pass) on top of the architecture-pass skeleton:
 criteria, assumptions, exclusions, and deliverables are now populated per
 section. Calculation logic itself (the corresponding `calcs/electrical_lv/`
-modules) is not yet built — `calculations_required` entries name what's
-needed but `calc_module_reference` stays unset until those modules exist.
+modules) is being built incrementally -- `calculations_required` entries
+name what's needed and `calc_module_reference` is set once the matching
+module exists (see calcs/electrical_lv/cable_sizing_voltage_drop.py for the
+first one); the rest remain unset until built.
 """
 
 from __future__ import annotations
@@ -115,7 +117,12 @@ def build_electrical_lv_bod_skeleton(project_reference: Optional[str] = None) ->
                 Interface(with_discipline="utilities_coordination", description="New electrical supply/DNO connection coordination (civils basis of design)."),
             ],
             calculations_required=[
-                CalculationRequirement(name="Cable sizing and voltage drop", standard_reference="BS 7671"),
+                CalculationRequirement(
+                    name="Cable sizing and voltage drop",
+                    description="BS 7671 Reg 433.1.1 current-carrying capacity check (Ib<=In<=Iz, I2<=1.45*Iz) and Appendix 4 voltage drop check, calcs/electrical_lv/cable_sizing_voltage_drop.py. Tabulated current rating (It) and mV/A/m are direct inputs, not derived -- see that module's docstring.",
+                    standard_reference="BS 7671",
+                    calc_module_reference="electrical_lv_cable_sizing_voltage_drop",
+                ),
                 CalculationRequirement(name="Load schedule / diversity", description="Aggregated demand across all LV loads."),
             ],
             criteria=[

@@ -202,10 +202,30 @@ circle (a substantial computational-geometry problem kept out of scope,
 same reasoning as `retaining_wall_stability.py`'s self-weight and
 `base_plate.py`'s effective area being direct inputs).
 
+**First electrical (LV) module**: `calcs/electrical_lv/cable_sizing_voltage_drop.py`
+— answers `lv_distribution_and_reticulation`'s "Cable sizing and voltage
+drop" requirement: BS 7671 Regulation 433.1.1 current-carrying capacity
+check (`Ib<=In<=Iz`, `I2<=1.45*Iz`) and the Appendix 4 voltage drop
+percentage check, for a single cable run. Continues the "flag, don't guess"
+pattern from `base_plate.py`/`surface_water_discharge.py`: BS 7671's cable
+current-rating and mV/A/m tables are extensive, installation-method-specific,
+and revised between amendments, so this module does NOT embed them — the
+tabulated current rating (It) and voltage drop figure (mV/A/m) are required
+direct inputs, looked up from the current Appendix 4 tables or manufacturer
+data. What the module DOES implement independently is the arithmetic BS 7671
+applies on top of those tabulated values: correction-factor derating, the
+three-condition Regulation 433.1.1 check, and the voltage drop percentage
+against a project criterion (default 5%, matching this discipline's own BoD
+criterion). The device's effective operation current (I2) defaults to
+1.45×In (a standard BS EN 60898/61009 MCB assumption) if not supplied
+directly. First module in a new discipline (`calcs/electrical_lv/`), and
+the first calc built outside civils/structural/geotechnical.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, the beam-column interaction check, highways/pavement
-civils calcs, electrical/mechanical piping calcs) plus independent
-verification of every illustrative value flagged throughout the detail passes.
+civils calcs, more electrical LV calcs, HV electrical calcs, mechanical
+piping calcs) plus independent verification of every illustrative value
+flagged throughout the detail passes.
 
 ## Getting started
 
@@ -230,6 +250,7 @@ python3 -m calcs.civil.foul_drainage
 python3 -m calcs.civil.cut_fill_balance
 python3 -m calcs.civil.surface_water_discharge
 python3 -m calcs.civil.slope_stability
+python3 -m calcs.electrical_lv.cable_sizing_voltage_drop
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -268,19 +289,21 @@ total-auto/
 │   │   ├── bolted_shear_connection.py  # EN 1993-1-8 concentric bolt group shear/bearing check, UK NA
 │   │   ├── base_plate.py           # EN 1993-1-8 base plate bearing + HD bolt tension check, UK NA
 │   │   └── deck_grating.py         # BS EN 1991-1-1 loads, EN 1993-1-1 elastic bearing-bar check, UK NA
-│   └── civil/                       # SIX MODULES BUILT — see below
-│       ├── lateral_earth_pressure.py   # Rankine active earth pressure, EN 1997-1 UK NA DA1
-│       ├── retaining_wall_stability.py # Sliding/overturning/bearing check, EN 1997-1 UK NA DA1
-│       ├── foul_drainage.py            # Peak foul flow + Manning's equation pipe capacity check
-│       ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
-│       ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
-│       └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
+│   ├── civil/                        # SIX MODULES BUILT — see below
+│   │   ├── lateral_earth_pressure.py   # Rankine active earth pressure, EN 1997-1 UK NA DA1
+│   │   ├── retaining_wall_stability.py # Sliding/overturning/bearing check, EN 1997-1 UK NA DA1
+│   │   ├── foul_drainage.py            # Peak foul flow + Manning's equation pipe capacity check
+│   │   ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
+│   │   ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
+│   │   └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
+│   └── electrical_lv/                # FIRST MODULE BUILT — see below
+│       └── cable_sizing_voltage_drop.py  # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
-│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution
+│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; first calc wired (cable sizing/voltage drop)
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
@@ -305,6 +328,7 @@ total-auto/
 │   ├── test_cut_fill_balance.py    # Validates grid-method volume arithmetic and paste parsing
 │   ├── test_surface_water_discharge.py  # Validates orifice sizing arithmetic
 │   ├── test_slope_stability.py     # Validates Fellenius method arithmetic and paste parsing
+│   ├── test_cable_sizing_voltage_drop.py  # Validates BS 7671 Reg 433.1.1 conditions and voltage drop arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser
