@@ -436,6 +436,31 @@ plan, not a user manual.
       calculation (UC1=1.030, UC2=1.116, governing eq 6.62, FAIL) and
       end-to-end in a real browser -- UI result matched the CLI run
       exactly. 288/288 tests passing.
+- [x] First electrical (HV) calc module:
+      `calcs/electrical_hv/transformer_sizing.py` -- the first calc built
+      outside civils/structural/geotechnical/electrical_lv, and the first
+      calc-to-calc handoff that crosses a discipline boundary rather than
+      staying within one. Answers `transformers`'s "Transformer rating"
+      `DesignCriterion` ("to be confirmed from the LV load schedule plus
+      diversity"): checks a candidate transformer rating against LV demand
+      plus a growth margin, and computes full-load current on both
+      windings via the three-phase power triangle (`I = S/(sqrt(3)*V)`).
+      `lv_demand_kva` is designed to be fed directly from
+      `calcs/electrical_lv/load_schedule_diversity.py`'s "S total" output
+      -- the same relationship already declared as an `Interface` with
+      `electrical_lv` in this section's BoD, now backed by an actual data
+      handoff. Deliberately does NOT select a standard preferred
+      transformer kVA size from a manufacturer's range -- the candidate
+      rating is a direct input, checked not derived, same reasoning as
+      `surface_water_discharge.py`'s permitted discharge rate.
+      `growth_margin_percent` is an illustrative default (20%), same
+      reasoning as `foul_drainage.py`'s `peak_flow_factor`. Explicitly out
+      of scope: N-1 parallel-transformer redundancy sizing and IEC
+      60076-7 thermal/ambient loading derating. 9 new tests, verified
+      against a hand calculation (lv_demand=26kVA, rated=100kVA, 11kV/0.4kV
+      -> utilisation 0.312 PASS, HV current 5.25A, LV current 144A) and
+      end-to-end in a real browser -- UI result matched the CLI run
+      exactly. 297/297 tests passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -593,12 +618,18 @@ mechanical piping**.
       `earth_electrode_resistance.py`, Dwight's formula for a single
       vertical driven earth rod, closing the gap between circuit-level
       earth fault protection and the actual earth electrode -- see that
-      module's docstring) -- see Milestone 1 above for all.
+      module's docstring), and electrical_hv has its first
+      (`transformer_sizing.py`, candidate transformer rating checked
+      against LV demand plus a growth margin, HV/LV full-load current --
+      the first cross-discipline calc-to-calc handoff, taking LV demand
+      directly from `load_schedule_diversity.py`'s output) -- see
+      Milestone 1 above for all.
       Remaining: block tearing, base plate bending, civils attenuation
       volume sizing (open item above -- needs the FSR/FEH rainfall model)
       and highways/pavement calcs, electrical_lv's motor starting (skipped
-      per project direction for now), and all calcs for
-      electrical_hv/mechanical_piping.
+      per project direction for now), the rest of electrical_hv
+      (protection discrimination/grading, substation earth grid design,
+      HV arc flash), and all mechanical_piping calcs.
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current

@@ -330,9 +330,29 @@ between `calcs/electrical_lv/` modules). Updated the "not covered"
 docstring claims in both `beam_capacity.py` and `column_capacity.py` to
 point at this module now that it exists.
 
+**First electrical (HV) module**: `calcs/electrical_hv/transformer_sizing.py`
+— answers `transformers`'s "Transformer rating" `DesignCriterion` ("to be
+confirmed from the LV load schedule plus diversity"). Checks a candidate
+transformer rating against LV demand plus a growth margin, and computes
+full-load current on both windings via the three-phase power triangle
+(`I = S/(sqrt(3)*V)`). First module in a new discipline
+(`calcs/electrical_hv/`), and the first calc-to-calc handoff **across**
+disciplines in this repo — `lv_demand_kva` is meant to come straight from
+`load_schedule_diversity.py`'s "S total" output, distinct from the earlier
+within-discipline handoffs (`load_schedule_diversity.py`→
+`cable_sizing_voltage_drop.py` in LV, `column_capacity.py`/`beam_capacity.py`
+→`beam_column_interaction.py` in structural). Deliberately does NOT select
+a standard preferred transformer kVA rating from a manufacturer's range —
+`rated_transformer_kva` is the engineer's candidate, supplied directly; the
+module only checks it. `growth_margin_percent` is an illustrative default
+(20%), same "confirm against the project's actual figures" reasoning as
+`foul_drainage.py`'s `peak_flow_factor`. Explicitly does not size for N-1
+parallel-transformer redundancy or apply IEC 60076-7 thermal derating — see
+module docstring.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs, motor starting for
-electrical LV, HV electrical calcs, mechanical piping calcs) plus
+electrical LV, more electrical HV calcs, mechanical piping calcs) plus
 independent verification of every illustrative value flagged throughout
 the detail passes.
 
@@ -365,6 +385,7 @@ python3 -m calcs.electrical_lv.load_schedule_diversity
 python3 -m calcs.electrical_lv.earth_fault_loop_impedance
 python3 -m calcs.electrical_lv.arc_flash_ppe_check
 python3 -m calcs.electrical_lv.earth_electrode_resistance
+python3 -m calcs.electrical_hv.transformer_sizing
 
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
@@ -411,19 +432,21 @@ total-auto/
 │   │   ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
 │   │   ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
 │   │   └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
-│   └── electrical_lv/                # FIVE MODULES BUILT — see below
-│       ├── cable_sizing_voltage_drop.py    # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
-│       ├── load_schedule_diversity.py      # P/Q load aggregation -> maximum demand current
-│       ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
-│       ├── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
-│       └── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
+│   ├── electrical_lv/                # FIVE MODULES BUILT — see below
+│   │   ├── cable_sizing_voltage_drop.py    # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
+│   │   ├── load_schedule_diversity.py      # P/Q load aggregation -> maximum demand current
+│   │   ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
+│   │   ├── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
+│   │   └── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
+│   └── electrical_hv/                # FIRST MODULE BUILT — see below
+│       └── transformer_sizing.py     # LV demand + growth margin vs candidate transformer rating, HV/LV full-load current
 ├── basis_of_design/                  # Discipline basis-of-design shape + skeletons
 │   ├── core.py                     # Shared BasisOfDesignSection shape
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
 │   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; five calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance)
-│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers
+│   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; first calc wired (transformer sizing)
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic)
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
 │   ├── graph.py                    # Interface() entries -> dependency graph, cycle detection, Mermaid
@@ -453,6 +476,7 @@ total-auto/
 │   ├── test_earth_fault_loop_impedance.py # Validates Zs = Ze+(R1+R2)*factor arithmetic and utilisation check
 │   ├── test_arc_flash_ppe_check.py        # Validates PPE category banding and dangerous-energy flagging
 │   ├── test_earth_electrode_resistance.py # Validates Dwight's formula arithmetic and utilisation check
+│   ├── test_transformer_sizing.py  # Validates required capacity/utilisation and full-load current arithmetic
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser

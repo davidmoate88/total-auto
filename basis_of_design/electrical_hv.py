@@ -21,8 +21,10 @@ standard text before being relied on.
 This is the detail pass (2nd pass) on top of the architecture-pass skeleton:
 criteria, assumptions, exclusions, and deliverables are now populated per
 section. Calculation logic itself (the corresponding `calcs/electrical_hv/`
-modules) is not yet built — `calculations_required` entries name what's
-needed but `calc_module_reference` stays unset until those modules exist.
+modules) is being built incrementally -- `calculations_required` entries
+name what's needed and `calc_module_reference` is set once the matching
+module exists (see calcs/electrical_hv/transformer_sizing.py for the
+first one); the rest remain unset until built.
 """
 
 from __future__ import annotations
@@ -174,6 +176,14 @@ def build_electrical_hv_bod_skeleton(project_reference: Optional[str] = None) ->
             ],
             interfaces=[
                 Interface(with_discipline="electrical_lv", description="Transformer secondary is the supply origin for LV distribution — see basis_of_design/electrical_lv.py."),
+            ],
+            calculations_required=[
+                CalculationRequirement(
+                    name="Transformer sizing check",
+                    description="LV demand plus growth margin checked against a candidate transformer rating, and HV/LV full-load current, calcs/electrical_hv/transformer_sizing.py. Takes LV demand directly from electrical_lv's load_schedule_diversity.py output -- the first cross-discipline calc-to-calc handoff in this repo. Does not select a standard preferred size -- checks a candidate rating supplied directly, see that module's docstring.",
+                    standard_reference="BS EN 60076",
+                    calc_module_reference="electrical_hv_transformer_sizing",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Transformer rating", value="to be confirmed from the LV load schedule plus diversity", notes="Cannot be finalised independently of basis_of_design/electrical_lv.py's load schedule and diversity assumptions."),
