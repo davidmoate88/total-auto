@@ -536,6 +536,54 @@ that exist, not just having them exist):
   case that would have silently failed without the `st.rerun()` fix, and
   did fail on the first verification pass before it was added.
 
+**Fill calc inputs from drawings — a skill + JSON import, scoped to
+electrical LV/HV.** The user wanted a Claude Code skill that reviews a
+source document (a GA, an SLD, a schedule) and fills in as much as
+possible of the relevant calc modules — with the web app able to
+recognise the result. Three pieces, built together:
+- `calcs/schema_export.py` — a small CLI (`python3 -m calcs.schema_export
+  [--discipline ...] [--key ...]`) that dumps any registered module's exact
+  input field names/types/defaults/descriptions as JSON, read fresh from
+  the live pydantic models every time rather than cached anywhere. This is
+  the piece that keeps everything else honest as fields get renamed or
+  added — nothing downstream hand-maintains a copy of the schema.
+- `.claude/skills/fill-calc-inputs-from-drawings/SKILL.md` — a Claude Code
+  skill that runs the schema export first (never a remembered field list),
+  reads the source document(s), and produces a JSON file mapping module
+  key → `{field: value}`. Its single governing rule extends this repo's
+  own "flag, don't guess" discipline one step further, to the *extraction*
+  step: a value that can't be read with real confidence from the source is
+  **left out of the JSON entirely**, never estimated or defaulted — an
+  omitted field just means the engineer fills it in manually, exactly as
+  if the skill had never touched it, which is a safe outcome; a wrong
+  number silently prefilled is not, because it looks authoritative and
+  invites no second look. The skill also writes a companion extraction-
+  notes file — what was found and where, what was deliberately left out
+  and why — the same idea as a calc module's own `warnings` list, one
+  level up.
+- `app.py`'s new sidebar **"Import extracted data (JSON)"** feature reads
+  that exact JSON shape and feeds it into the *same* generic prefill store
+  `CALC_HANDOFFS` already uses (`_set_prefill`, factored out of
+  `_apply_handoffs` for this) — one mechanism now serves both calc-to-calc
+  handoffs and externally-supplied data, not two parallel ones. Unknown
+  module keys and unrecognised field names are reported as warnings, not
+  silently dropped, so a skill mistake (or a schema that's moved on since
+  the skill last ran) is visible rather than swallowed.
+
+Scoped to the 9 Electrical (LV)+(HV) modules for now, per project
+direction — SLDs map naturally onto load schedules, cable sizing,
+transformer sizing, protection grading, and earthing; other disciplines'
+source documents (structural GAs, piping isometrics) are different enough
+in kind that this skill's LV/HV-specific guidance wouldn't transfer
+directly, and extending scope is a separate decision, not assumed here.
+Verified end-to-end in a real browser: uploaded a JSON with valid fields
+for two modules across two different disciplines (LV and HV) plus two
+deliberately invalid module keys — got a clean "Imported 4 field(s) across
+2 module(s)" summary, both invalid keys correctly flagged as warnings
+rather than silently skipped, and confirmed the actual form fields (not
+just the summary message) held the imported values on both modules after
+switching tabs.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs, motor starting for
 electrical LV)
@@ -580,6 +628,9 @@ python3 -m calcs.mechanical_piping.pipe_stress_check
 python3 -m calcs.mechanical_piping.ped_pesr_classification_check
 python3 -m calcs.mechanical_piping.support_load_schedule
 
+# Print the JSON schema for calc modules (used by the fill-calc-inputs-from-drawings skill)
+python3 -m calcs.schema_export --discipline "Electrical (LV)" --discipline "Electrical (HV)"
+
 # Print the discipline dependency graph as a Mermaid flowchart
 python3 -m integration.graph
 
@@ -604,6 +655,7 @@ total-auto/
 │   └── risk.py                     # DesignRiskFlag — shared risk-flagging shape (calcs + BoDs)
 ├── calcs/
 │   ├── registry.py                 # Central list of registered calc modules
+│   ├── schema_export.py            # JSON schema dump of any module's input fields -- backs the import skill + app.py's import feature
 │   ├── geotechnical/                # BUILT — see below
 │   │   ├── bearing_capacity.py     # EN 1997-1 Annex D bearing resistance, UK NA DA1
 │   │   └── interpretation/
@@ -685,11 +737,16 @@ total-auto/
 │   ├── test_pipe_stress_check.py   # Validates ASME B31.3 sustained/thermal expansion stress arithmetic
 │   ├── test_ped_pesr_classification_check.py  # Validates PED scope threshold and conformity assessment bookkeeping
 │   ├── test_support_load_schedule.py  # Validates reaction load aggregation and allowable-reaction screening check
+│   ├── test_schema_export.py       # Validates the JSON schema export shape/filtering
 │   ├── test_correlations.py        # Validates SPT/CPT correlation functions
 │   ├── test_ground_model.py        # Validates multi-layer overburden + parameter pooling
 │   ├── test_text_input.py          # Validates the paste-format parser
 │   ├── test_basis_of_design.py     # Validates all five discipline BoD skeletons + risk flags
 │   └── test_integration.py         # Validates the dependency graph, cycle detection, open items, master document
+├── .claude/
+│   └── skills/
+│       └── fill-calc-inputs-from-drawings/
+│           └── SKILL.md            # Claude Code skill: reads a GA/SLD/schedule, produces JSON matching calcs.schema_export's shape for app.py's import feature
 └── docs/
     ├── ARCHITECTURE.md             # Domain map, design principles, integration points
     ├── ROADMAP.md                  # Full vision and build order

@@ -296,6 +296,48 @@ hypothetical):
    self-triggered rerun, since `st.form_submit_button`'s `submitted` flag
    is a one-shot signal that goes back to `False` on the very next run.
 
+**External data import (`calcs/schema_export.py` + the
+fill-calc-inputs-from-drawings skill).** `CALC_HANDOFFS` wires calc-to-calc
+data flow inside the app, but the first data entry for a project still comes
+from source documents (GA drawings, SLDs, load/cable schedules) outside it.
+`calcs/schema_export.py` introspects any `CalcModule`'s pydantic
+`input_model` (`model_fields`, unwrapping `Optional[...]` via
+`typing.get_origin`/`typing.Union`, treating `PydanticUndefined` as "no
+default = required") and emits a JSON schema per module: field `type`
+(`literal`/`bool`/`int`/`float`/`str`), `required`, `optional_field`,
+`default`, `description`, and, for `literal` fields, `allowed_values`. It has
+a CLI (`python3 -m calcs.schema_export --discipline "..." --key ...`, filters
+combine as AND) and is exercised directly by `tests/test_schema_export.py`.
+
+This schema is the shared contract between two consumers that would
+otherwise need to agree on field names by hand:
+
+- **`.claude/skills/fill-calc-inputs-from-drawings/SKILL.md`** — a Claude
+  Code skill (currently scoped to the 9 Electrical (LV)/(HV) modules; see the
+  skill file's own "Scope" section) that reads source documents and produces
+  a JSON file keyed by module key, each value an object of populated
+  `field_name: value` pairs. Its central rule mirrors the calc modules' own
+  "flag, don't guess" discipline one level upstream: a field the skill can't
+  confidently read from the source document must be omitted from the output
+  entirely, never guessed or defaulted — an omitted field just means the
+  engineer fills it in by hand, same as if the skill had never run.
+- **`app.py`'s `render_import_sidebar()`** — a sidebar "Import extracted data
+  (JSON)" expander (rendered first in `main()`, before the discipline
+  tabs are built, so a same-run import is visible immediately rather than
+  needing an extra rerun). It parses the uploaded JSON, validates each
+  module key via `get_module` and each field name via
+  `module.input_model.model_fields`, routes valid fields through the same
+  `_set_prefill` helper `CALC_HANDOFFS` uses (so imported values get the same
+  widget-key-versioning treatment as a calc-to-calc handoff), and reports
+  unknown module keys/fields back to the user rather than silently dropping
+  them.
+
+Because both consumers are driven by the same live pydantic models rather
+than a separately-maintained field list, there is exactly one source of
+truth for "what fields does this module take" — the schema export, the
+skill's instructions, and the app's import validation can't drift apart from
+each other the way three hand-written copies would.
+
 ## Civils calcs (`calcs/civil/`) and cross-domain DA1 reuse
 
 The first two `calcs/civil/` modules answer `retaining_structures`'s two

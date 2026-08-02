@@ -669,6 +669,35 @@ plan, not a user manual.
       cross-discipline handoff (LV -> HV) correctly prefilled. 362/362
       tests passing (app.py has no direct pytest coverage; verification
       was end-to-end in a real browser).
+- [x] Fill calc inputs from drawings: a schema export + a Claude Code skill
+      + a JSON import feature, scoped to the 9 Electrical (LV)/(HV) modules
+      first (user's explicit choice over building generically for all five
+      disciplines up front). `calcs/schema_export.py` introspects any
+      module's pydantic `input_model` and emits each field's type/required/
+      default/description (and `allowed_values` for `literal` fields) as
+      JSON, with a `--discipline`/`--key` filtering CLI (filters combine as
+      AND, documented in `--help` after briefly tripping over the opposite
+      assumption while testing). `.claude/skills/fill-calc-inputs-from-
+      drawings/SKILL.md` reads a GA/SLD/schedule and produces JSON in that
+      same shape -- its central rule extends this repo's "flag, don't
+      guess" discipline one level upstream, to extraction itself: a field
+      the skill can't confidently read from the source document is left
+      out of the output entirely, never guessed or defaulted, exactly
+      mirroring how a calc module treats a genuinely uncertain engineering
+      value. `app.py`'s new sidebar "Import extracted data (JSON)" expander
+      (`render_import_sidebar`) validates each module key/field name against
+      the live registry and pydantic models, routes valid fields through
+      the same `_set_prefill` helper `CALC_HANDOFFS` uses, and reports
+      unknown keys/fields back to the user rather than dropping them
+      silently. All three pieces share one source of truth (the live
+      pydantic models) rather than three hand-maintained field lists. 8 new
+      tests for the schema export; the full pipeline was also verified
+      end-to-end in a real browser with a hand-crafted JSON file covering
+      both the happy path (4 fields imported across 2 modules, same-
+      discipline and cross-discipline prefills both confirmed by inspecting
+      actual field values) and the error path (two deliberately-invalid
+      module keys correctly flagged, not silently ignored). 370/370 tests
+      passing.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text

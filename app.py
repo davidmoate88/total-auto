@@ -22,6 +22,20 @@ prefill store after any source module's result is computed, keyed off the
 same "Set <field>?"-aware form-prefill support `_field_widget` already had
 for the ground-model case (now generalised rather than special-cased).
 
+External data import: `render_import_sidebar()` accepts a JSON file (sidebar
+expander, "Import extracted data") keyed by module key -> {field: value},
+matching `calcs.schema_export`'s output shape, and feeds it into the same
+generic prefill store `_apply_handoffs` writes to -- one mechanism serving
+both calc-to-calc handoffs and externally-supplied data. This is the
+counterpart to the `.claude/skills/fill-calc-inputs-from-drawings/` skill,
+which reads a source document (a GA, an SLD, a schedule) and produces a
+JSON file in this exact shape for a competent person to review and import
+here -- see that skill's SKILL.md for the full "flag, don't guess" contract
+it follows (never invents a value; a field it isn't confident about is
+simply absent from the JSON, left for direct manual entry, same discipline
+every calc module in this repo already applies to its own uncertain
+inputs).
+
 One tab per module in calcs.registry.CALC_REGISTRY, form auto-built from
 the module's pydantic input model (see _field_widget) — per the design
 principle in docs/ARCHITECTURE.md: "app.py just discovers registered calc
@@ -47,6 +61,7 @@ Run with: streamlit run app.py
 
 from __future__ import annotations
 
+import json
 import typing
 from datetime import datetime, timezone
 from typing import Literal, Optional
@@ -160,6 +175,19 @@ def _prefill_versions() -> dict[str, int]:
     return st.session_state.setdefault("calc_prefill_version", {})
 
 
+def _set_prefill(target_key: str, field_name: str, value) -> None:
+    """
+    Write one field's value into target_key's prefill store and bump its version
+    (see _field_widget's key-versioning comment for why the version bump matters).
+    Shared by _apply_handoffs (calc-to-calc) and render_import_sidebar (externally
+    supplied JSON) -- both are "push a value into some target module's form"
+    operations, just with a different source.
+    """
+    _prefill_store().setdefault(target_key, {})[field_name] = value
+    versions = _prefill_versions()
+    versions[target_key] = versions.get(target_key, 0) + 1
+
+
 def _apply_handoffs(source_key: str, result) -> list[CalcModule]:
     """
     After a module's result is computed, push any CALC_HANDOFFS values declared
@@ -169,8 +197,6 @@ def _apply_handoffs(source_key: str, result) -> list[CalcModule]:
     overwrites. Returns the target CalcModules that received a value, for a
     user-facing notice.
     """
-    store = _prefill_store()
-    versions = _prefill_versions()
     targets: list[CalcModule] = []
     for src_key, selector, target_key, target_field in CALC_HANDOFFS:
         if src_key != source_key:
@@ -182,10 +208,77 @@ def _apply_handoffs(source_key: str, result) -> list[CalcModule]:
             if term is None:
                 continue
             value = term.value
-        store.setdefault(target_key, {})[target_field] = value
-        versions[target_key] = versions.get(target_key, 0) + 1
+        _set_prefill(target_key, target_field, value)
         targets.append(get_module(target_key))
     return targets
+
+
+def render_import_sidebar() -> None:
+    """
+    Sidebar "Import extracted data (JSON)" expander -- accepts a JSON file keyed
+    by module key -> {field: value}, matching calcs.schema_export's shape (the
+    fill-calc-inputs-from-drawings skill's expected output format), and feeds it
+    into the same prefill store _apply_handoffs uses. See module docstring.
+
+    Runs before the discipline tabs render each script execution (declared first
+    in main()), so a same-run, same-discipline import applies immediately without
+    needing st.rerun() -- but st.rerun() is still used after a successful import
+    (mirroring the fix in render_calc_module_tab) since ordering assumptions like
+    that are exactly the kind of thing that quietly breaks on a future refactor;
+    the summary/warnings are persisted to session_state first so they still
+    render after the forced rerun discards this execution's own output.
+    """
+    with st.sidebar.expander("Import extracted data (JSON)"):
+        st.caption(
+            "Upload a JSON file produced by the 'fill-calc-inputs-from-drawings' skill "
+            "(or matching its schema by hand) to prefill one or more modules' forms. "
+            "See .claude/skills/fill-calc-inputs-from-drawings/SKILL.md."
+        )
+        uploaded = st.file_uploader("Import file", type=["json"], key="import_uploader", label_visibility="collapsed")
+        if uploaded is not None and st.button("Import", key="import_button"):
+            try:
+                payload = json.loads(uploaded.getvalue().decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                payload = None
+                st.session_state["_import_summary"] = (0, [], [f"Could not parse the uploaded file as JSON: {exc}"])
+
+            if payload is not None and not isinstance(payload, dict):
+                st.session_state["_import_summary"] = (0, [], ["Expected a top-level JSON object keyed by module key."])
+            elif payload is not None:
+                imported_fields = 0
+                touched_modules: list[str] = []
+                problems: list[str] = []
+                for module_key, fields in payload.items():
+                    try:
+                        module = get_module(module_key)
+                    except KeyError:
+                        problems.append(f"Unknown module key '{module_key}' -- skipped.")
+                        continue
+                    if not isinstance(fields, dict):
+                        problems.append(f"'{module_key}': expected an object of field values, got {type(fields).__name__} -- skipped.")
+                        continue
+                    valid_fields = module.input_model.model_fields
+                    any_field_for_module = False
+                    for field_name, value in fields.items():
+                        if field_name not in valid_fields:
+                            problems.append(f"'{module_key}.{field_name}': not a recognised field -- skipped.")
+                            continue
+                        _set_prefill(module_key, field_name, value)
+                        imported_fields += 1
+                        any_field_for_module = True
+                    if any_field_for_module:
+                        touched_modules.append(module.name)
+                st.session_state["_import_summary"] = (imported_fields, touched_modules, problems)
+            if st.session_state.get("_import_summary", (0,))[0]:
+                st.rerun()
+
+        summary = st.session_state.get("_import_summary")
+        if summary:
+            imported_fields, touched_modules, problems = summary
+            if imported_fields:
+                st.success(f"Imported {imported_fields} field(s) across {len(touched_modules)} module(s): {', '.join(touched_modules)}.")
+            for p in problems:
+                st.warning(p)
 
 
 def render_calc_module_tab(module: CalcModule) -> None:
@@ -371,6 +464,10 @@ def main() -> None:
         "discovered from calcs.registry.CALC_REGISTRY and grouped by discipline in the sidebar. "
         "See docs/ROADMAP.md for what's planned beyond this."
     )
+
+    # Runs before the discipline radio/tabs below so a same-run import (see its
+    # own docstring) writes to the prefill store before any tab's widgets read it.
+    render_import_sidebar()
 
     grouped = _modules_by_discipline()
     discipline_options = [d for d in DISCIPLINE_ORDER if grouped.get(d)]
