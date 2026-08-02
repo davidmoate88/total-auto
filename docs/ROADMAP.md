@@ -698,6 +698,71 @@ plan, not a user manual.
       actual field values) and the error path (two deliberately-invalid
       module keys correctly flagged, not silently ignored). 370/370 tests
       passing.
+- [x] Sixth electrical (LV) calc module: `calcs/electrical_lv/motor_starting.py`
+      -- closes the one calc gap in Electrical (LV)/(HV) left open by
+      explicit decision, not oversight (this milestone's own arc-flash
+      entry above says "do arc flash, ignore motor starting"; the
+      load-schedule-diversity module's docstring flagged the same gap and
+      pointed here). Starting current
+      (`full_load_current_a*starting_current_multiplier`) and voltage dip
+      at the point of connection (a simplified `Ist/Isc` source-impedance
+      approximation), checked against a permissible dip limit --
+      `starting_current_multiplier` and `source_fault_current_a` are
+      required direct inputs, not a "typical DOL ~6x FLC" default, since
+      DOL/star-delta/soft-start/VSD give materially different starting
+      currents for the same motor -- same reasoning as
+      `cable_sizing_voltage_drop.py`'s tabulated cable rating and
+      `protection_grading.py`'s `fault_current_a`. Also raises an
+      `assumption_sensitivity` flag when a DOL start is chosen for a motor
+      above the DOL threshold criterion (illustrative default 5.5kW,
+      matching `motor_control_and_switchgear`'s existing `DesignCriterion`)
+      -- the first calc in this repo to turn one of its own discipline's
+      plain criterion values into an actual per-run pass/fail check rather
+      than a value only ever displayed. This completes all 9 named
+      `calculations_required` entries across Electrical (LV) and
+      Electrical (HV). 11 new tests, verified against a hand calculation
+      (FLC 14.5A x 6.5 = 94.25A starting current, 3.77% dip against a
+      2500A source fault current, utilisation 0.377 PASS; DOL flag
+      confirmed firing for a 7.5kW motor above the 5.5kW default threshold
+      and confirmed NOT firing for the same motor on a non-DOL method) and
+      end-to-end in a real browser. 381/381 tests passing.
+- [x] UI: from discipline tabs to a searchable catalog -- with Electrical
+      (LV)/(HV) complete and the registry at 28 entries (ground model +
+      27 calc modules), the sidebar-radio-plus-`st.tabs()` navigation built
+      for the previous milestone (26 modules across six disciplines)
+      started showing the opposite problem: finding a specific calc meant
+      already knowing which discipline bucket it lived in, which stops
+      being obvious once a single discipline itself has six-plus modules.
+      `app.py`'s `render_catalog` replaces grouped navigation with one
+      flat, searchable list -- every module (plus the ground model
+      interpreter, not a `calcs.registry` entry) as a card with its
+      name/discipline/description, filtered by free-text search
+      (`_filter_entries`, matching name/discipline/description) and/or a
+      discipline dropdown. Opening a card sets
+      `st.session_state["selected_key"]` and renders that module's form
+      full-width (`render_module_detail`) with a "Back to catalog"
+      control -- one piece of navigation state where the old design needed
+      two (which discipline, which tab within it). None of the generic
+      machinery changed (`_field_widget`, `render_calc_module_tab`,
+      `_apply_handoffs`, `render_import_sidebar`) -- `CalcModule.discipline`
+      was already the only "where does this belong" metadata any of it
+      needed, whether that drove a tab row or a filter dropdown. The one
+      real gap the rewrite had to close: with tabs, a same-discipline
+      handoff target was already visible as a sibling tab; with only one
+      module ever rendered per run now, the post-run "handed off" notice
+      would otherwise just name a target the user has to find by hand --
+      it now also renders an "Open `<target>` ->" button per handed-off
+      target (ground model's bearing-resistance handoff got the same
+      treatment) that jumps straight into that module's detail view.
+      Verified end-to-end in a real browser: searched "motor" and got
+      exactly the new module; ran `load_schedule_diversity.py` and
+      confirmed both its handoff targets (one same-discipline, one
+      cross-discipline into Electrical (HV)) got working "Open ->"
+      buttons, with the cross-discipline target's `lv_demand_kva`
+      correctly pre-filled at 21.04 (the handed-off S total) after
+      clicking through. 381/381 tests passing (app.py has no direct
+      pytest coverage; verification was end-to-end in a real browser, per
+      this repo's established practice for UI changes).
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text
@@ -887,8 +952,10 @@ mechanical piping**.
       docstrings) -- see Milestone 1 above for all.
       Remaining: block tearing, base plate bending, civils attenuation
       volume sizing (open item above -- needs the FSR/FEH rainfall model)
-      and highways/pavement calcs, and electrical_lv's motor starting
-      (skipped per project direction for now).
+      and highways/pavement calcs. electrical_lv's motor starting, listed
+      here as skipped per project direction, was subsequently built --
+      see the "Sixth electrical (LV) calc module" entry under Milestone 1
+      above.
       Independent verification of every
       "illustrative value" flagged throughout the detail passes against
       actual current

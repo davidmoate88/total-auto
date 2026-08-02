@@ -17,7 +17,7 @@ for, worked examples of overriding the illustrative skeleton values — see
 | `calcs/geotechnical/` | Ground investigation interpretation + EC7 bearing resistance | **Built** — working calc, verified logic, Streamlit UI |
 | `calcs/structural/` | Structural calc modules (EN 1992/1993/1995) | **Six modules built** — `beam_capacity.py` (EN 1993-1-1 bending/shear/deflection), `column_capacity.py` (EN 1993-1-1 axial buckling resistance, both principal axes), `beam_column_interaction.py` (EN 1993-1-1 SS6.3.3 combined bending+axial interaction, equations 6.61/6.62 — k-factors are required direct inputs, see below), `bolted_shear_connection.py` (EN 1993-1-8 concentric bolt group shear/bearing), `base_plate.py` (EN 1993-1-8 base plate bearing + HD bolt tension), `deck_grating.py` (BS EN 1991-1-1 imposed loads, elastic bearing-bar stress/deflection check). All verified, all wired into the Streamlit UI via the generic form (see below). Block tearing, base plate bending, and moment connections not yet built |
 | `calcs/civil/` | Civil calc modules (drainage, earthworks, retaining structures) | **Six modules built** — `lateral_earth_pressure.py` (Rankine active thrust, both DA1 combinations), `retaining_wall_stability.py` (sliding/overturning/bearing, reusing the first module's active-thrust function and the geotechnical module's DA1 factor sets), `foul_drainage.py` (population-based peak flow, Manning's-equation pipe capacity/self-cleansing check — Sewers for Adoption-based, not Eurocode), `cut_fill_balance.py` (grid-method earthwork volume balance from pasted grid-point data — not a safety check, a cost/logistics one), `surface_water_discharge.py` (practical-minimum discharge check + flow control orifice sizing — takes the permitted discharge rate as a direct input, does not derive it), `slope_stability.py` (Fellenius Method of Slices, both DA1 combinations, slice geometry as a direct input — see below). All verified, all wired into the Streamlit UI. Attenuation volume sizing (needs the FSR/FEH rainfall model — see docs/ROADMAP.md's open items) and highways/pavement calcs not yet built |
-| `calcs/electrical_lv/` | LV electrical calc modules | **Five modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance). All verified, all wired into the Streamlit UI. Motor starting skipped per project direction |
+| `calcs/electrical_lv/` | LV electrical calc modules | **Six modules built** — `cable_sizing_voltage_drop.py` (BS 7671 Reg 433.1.1 current-carrying capacity check + Appendix 4 voltage drop check, single cable run), `load_schedule_diversity.py` (P/Q real+reactive power aggregation of diversified loads to a maximum demand current, feeding directly into the first module's `design_current_a`), `earth_fault_loop_impedance.py` (BS 7671 Chapter 41 Zs check against the tabulated maximum for automatic disconnection), `arc_flash_ppe_check.py` (PPE category classification from an externally-supplied IEEE 1584 incident energy figure — deliberately does NOT calculate incident energy itself), `earth_electrode_resistance.py` (Dwight's formula, single vertical driven rod earth resistance), `motor_starting.py` (starting current + simplified Ist/Isc voltage dip check against a permissible limit, plus a DOL-threshold risk flag — closes the gap previously skipped per project direction). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
 | `calcs/electrical_hv/` | HV electrical calc modules | **Four modules built** — `transformer_sizing.py` (candidate transformer rating checked against LV demand plus a growth margin, HV/LV full-load current — the first cross-discipline calc-to-calc handoff, taking LV demand from `load_schedule_diversity.py`'s output), `protection_grading.py` (IEC 60255-151 IDMT relay operating times, upstream/downstream grading margin check — curve constants embedded directly, unlike this discipline's other modules), `arc_flash_ppe_check.py` (required PPE arc rating vs a practical PPE limit from an externally-supplied incident energy figure — deliberately shaped differently from the LV arc flash module), `substation_earthing_touch_step.py` (Sverak grid resistance + IEEE 80 tolerable touch/step voltage, checked against an externally-supplied actual mesh/step voltage). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
 | `calcs/mechanical_piping/` | Mechanical piping calc modules | **Four modules built** — `line_sizing_velocity_check.py` (actual velocity vs the API RP 14E erosional velocity limit and a target velocity range — the fifth and final discipline to get a working calc), `pipe_stress_check.py` (ASME B31.3 sustained stress + thermal expansion stress range check from externally-supplied resultant moments — does not perform flexibility analysis), `ped_pesr_classification_check.py` (PED Article 2(1) scope threshold computed directly, conformity assessment bookkeeping from an externally-determined category), `support_load_schedule.py` (per-support reaction load aggregation, unfactored, for handover to structural — see below). All verified, all wired into the Streamlit UI. All named `calculations_required` entries for this discipline are now built |
 | `basis_of_design/` | Discipline basis-of-design shape + civils/structural/LV+HV electrical/mechanical piping, architecture AND detail passes | **All five agreed disciplines fully detailed** — civils, structural, LV electrical, HV electrical, mechanical piping all have criteria/assumptions/exclusions/deliverables populated. The corresponding `calcs/<discipline>/` modules (beyond geotechnical) are being built incrementally |
@@ -238,17 +238,31 @@ genericity across five (and growing) modules rather than bespoke layout code
 per module; nothing stops a later pass adding layout hints to the generic
 renderer if the flat form proves annoying in practice.
 
-**Navigation by discipline.** With 26 registered calc modules across six
-disciplines, one flat `st.tabs()` row (the original design) had become the
-app's single biggest usability problem — the same friction showed up
-repeatedly during this session's own browser-based verification passes
-(scrolling and hunting for a specific tab among 20+). `app.py` now groups
-`CALC_REGISTRY` by `CalcModule.discipline` (`_modules_by_discipline`) and
-puts a `st.sidebar.radio` discipline selector in front of the main content
-area; only the selected discipline's modules render as `st.tabs()`, keeping
-each row to at most ~7. `CalcModule.discipline` was already a required
-field on every module (used for exactly this from the start, just not
-acted on) — no new metadata needed.
+**Navigation: a searchable catalog.** `app.py` went through two navigation
+designs before this one. First, one flat `st.tabs()` row for every module —
+broke down once the registry passed ~20 modules (scrolling and hunting for
+a specific tab). Then a `st.sidebar.radio` discipline selector scoping each
+`st.tabs()` row to ~7 modules — broke down from the other direction once a
+single discipline itself grew past a handful of modules (Electrical (LV)
+alone is now six): finding one specific calc meant already knowing which
+discipline bucket it lived in. The current design (`render_catalog`) drops
+grouped navigation entirely in favour of one flat, searchable list: every
+`CatalogEntry` (the ground model interpreter — not a `calcs.registry`
+module — plus one entry per `CalcModule`) renders as a card with its
+name/discipline/description, filtered by a free-text search
+(`_filter_entries`, matching name/discipline/description) and/or a
+discipline dropdown (`_discipline_sort_index` orders matches so results
+still cluster by discipline even though the layout is flat). Selecting a
+card's "Open →" button sets `st.session_state["selected_key"]` and reruns;
+`main()` branches on whether that key is set to render either
+`render_catalog()` or `render_module_detail()` — a single piece of
+navigation state where the old design needed two (which discipline, which
+tab within it). `CalcModule.discipline` — a required field since the very
+first module — is still the only "where does this belong" metadata either
+the filter dropdown or the sort order needed; nothing about `_field_widget`,
+`render_calc_module_tab`, `_apply_handoffs`, or `render_import_sidebar`
+changed across either navigation redesign, because none of them were ever
+coupled to how modules get grouped on screen.
 
 **Cross-module handoffs.** Several calc modules are explicitly designed to
 consume another module's output — e.g. `load_schedule_diversity.py`'s
@@ -278,23 +292,29 @@ hypothetical):
    counter into that module's widget keys forces a genuinely fresh widget
    (and therefore a fresh `value=`) whenever a new prefill arrives — this
    part was already true of the original bearing-specific mechanism.
-2. What's new: `CALC_REGISTRY` iteration order (and, since the sidebar
-   scopes rendering to one discipline at a time, sometimes *whether a
-   target renders in the same script execution at all*) is no longer
-   guaranteed to put a handoff's source ahead of its target the way the
-   ground-model case always structurally did (ground model was always
-   tab/discipline zero). A target rendered earlier in the same run than
-   its source — or in a different discipline the user isn't currently
-   viewing — would read a stale prefill store and silently miss the
-   handoff, with no further Streamlit rerun to fix it (switching tabs is
-   client-side only; it doesn't re-invoke the script). `render_calc_module_tab`
-   now persists a submitted result into `st.session_state["last_result__<key>"]`
-   and calls `st.rerun()` immediately after any handoff fires, so the
-   *next* script execution starts with an already-current prefill store
-   before any tab's widgets are built — the persisted result is what lets
-   the source module's own tab keep showing its result across that
+2. What's new: a handoff's target module isn't guaranteed to render in the
+   same script execution as its source — true under the old sidebar+tabs
+   design whenever source and target sat in different disciplines (the
+   ground-model case never had this problem; it was always tab/discipline
+   zero), and now true unconditionally under the catalog, which only ever
+   renders ONE module's detail view per run regardless of discipline. A
+   target that isn't rendered this run can't pick up a freshly-updated
+   prefill store on its own, with no further Streamlit rerun to fix it
+   (navigating the catalog is client-side only; it doesn't re-invoke the
+   script by itself). `render_calc_module_tab` persists a submitted result
+   into `st.session_state["last_result__<key>"]` and calls `st.rerun()`
+   immediately after any handoff fires, so the *next* script execution
+   starts with an already-current prefill store before the target's
+   widgets are ever built — the persisted result is what lets the source
+   module's own detail view keep showing its result across that
    self-triggered rerun, since `st.form_submit_button`'s `submitted` flag
    is a one-shot signal that goes back to `False` on the very next run.
+   The same rerun-after-handoff result also carries a per-target "Open
+   `<target>` →" button (and the ground-model tab's bearing-resistance
+   handoff gets the same treatment) — under sidebar+tabs a same-discipline
+   target was at least one click away as a sibling tab; under the catalog
+   there's no implicit "nearby" module anymore, so the jump has to be
+   explicit.
 
 **External data import (`calcs/schema_export.py` + the
 fill-calc-inputs-from-drawings skill).** `CALC_HANDOFFS` wires calc-to-calc
@@ -322,8 +342,8 @@ otherwise need to agree on field names by hand:
   entirely, never guessed or defaulted — an omitted field just means the
   engineer fills it in by hand, same as if the skill had never run.
 - **`app.py`'s `render_import_sidebar()`** — a sidebar "Import extracted data
-  (JSON)" expander (rendered first in `main()`, before the discipline
-  tabs are built, so a same-run import is visible immediately rather than
+  (JSON)" expander (rendered first in `main()`, before the catalog/detail
+  view is built, so a same-run import is visible immediately rather than
   needing an extra rerun). It parses the uploaded JSON, validates each
   module key via `get_module` and each field name via
   `module.input_model.model_fields`, routes valid fields through the same
@@ -559,6 +579,36 @@ and using this single-rod answer as a stand-in for that would understate
 the real design need. `target_earth_resistance_ohms` is a required direct
 input, same reasoning as `earth_fault_loop_impedance.py`'s `max_zs_ohms` —
 project/system-specific, not a fixed constant.
+
+The sixth `calcs/electrical_lv/` module, `motor_starting.py`, closes the
+one calc gap in this discipline that was left open by explicit decision
+rather than oversight: `load_schedule_diversity.py`'s own docstring already
+flagged "Motor starting current (inrush) is not considered", and
+`docs/ROADMAP.md` recorded it as skipped per project direction. Starting
+current is `full_load_current_a * starting_current_multiplier`; voltage
+dip at the point of connection is a simplified `(I_start/source_fault_current_a)*100`
+source-impedance approximation, checked against a permissible dip limit —
+the same shape as `transformer_sizing.py`'s required-capacity/utilisation
+check, one module earlier in this same discipline's build order. The
+"flag, don't guess" line sits at `starting_current_multiplier`, not the
+formula: DOL, star-delta, soft-start, and VSD starting each produce a
+materially different multiplier for the *same* motor, so unlike
+`transformer_sizing.py`'s `growth_margin_percent` (an illustrative default
+that's still directionally reasonable if unconfirmed), there is no
+sensible default multiplier to fall back on — it's a required direct input
+from the motor's own datasheet, same reasoning as
+`cable_sizing_voltage_drop.py`'s tabulated cable rating.
+`source_fault_current_a` is likewise required rather than derived, mirroring
+`protection_grading.py`'s `fault_current_a` ("from a DNO/network fault
+level study, not calculated here"). The module also raises an
+`assumption_sensitivity` flag when a DOL start is selected for a motor
+above `dol_starting_threshold_kw` (illustrative default 5.5kW) — the first
+calc in this repo to turn one of its own discipline's plain
+`DesignCriterion` values (`motor_control_and_switchgear`'s "Direct-on-line
+(DOL) starting threshold") into an actual per-run pass/fail check, rather
+than a value only ever displayed in the rendered basis of design. This
+closes out all 9 named `calculations_required` entries across both
+Electrical (LV) and Electrical (HV).
 
 The sixth `calcs/structural/` module, `beam_column_interaction.py`, closes a
 gap flagged since `beam_capacity.py`/`column_capacity.py` were first built:

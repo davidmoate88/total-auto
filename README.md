@@ -584,11 +584,70 @@ rather than silently skipped, and confirmed the actual form fields (not
 just the summary message) held the imported values on both modules after
 switching tabs.
 
+**Sixth electrical (LV) module**: `calcs/electrical_lv/motor_starting.py`
+— closes the one calc gap in Electrical (LV)/(HV) that was left explicitly
+open rather than forgotten: `load_schedule_diversity.py`'s own docstring
+already said "Motor starting current (inrush) is not considered ... see
+the separate motor control/switchgear starting-method criteria in the
+BoD," and `docs/ROADMAP.md` recorded it as "skipped per project direction
+for now." Starting current (`FLC * starting_current_multiplier`) and the
+resulting voltage dip at the point of connection (a simplified `Ist/Isc`
+source-impedance approximation, checked against a permissible dip limit)
+answer `motor_control_and_switchgear`'s new `CalculationRequirement` in
+`basis_of_design/electrical_lv.py`. Same "flag, don't guess" pattern as
+every other module here, one level more pointed: `starting_current_multiplier`
+is NOT defaulted to a "typical DOL ~6x FLC" figure, because DOL/star-delta/
+soft-start/VSD give materially different starting currents for the same
+motor — it's a required direct input from the motor's own datasheet, same
+reasoning as `cable_sizing_voltage_drop.py`'s tabulated cable rating.
+`source_fault_current_a` is likewise required, not derived, matching
+`protection_grading.py`'s `fault_current_a`. Also flags a DOL start above
+the project's DOL threshold criterion (illustrative default 5.5kW,
+matching the criterion already in the BoD) — the first calc in this repo
+to turn one of its own discipline's plain `DesignCriterion` values into an
+actual pass/fail check on a per-run input rather than just displaying it.
+This completes all 9 Electrical (LV)/(HV) `calculations_required` entries
+named across both disciplines' basis of design.
+
+**UI: from discipline tabs to a searchable catalog.** With Electrical
+(LV)/(HV) complete and the calc count now 28 (ground model interpreter
+plus 27 registered modules), the sidebar-radio-plus-`st.tabs()` navigation
+built for 26 modules across six disciplines started showing its own limit
+from the other direction: finding one specific calc meant already knowing
+which discipline bucket it lived in, which stops being obvious as modules
+accumulate within a discipline (Electrical (LV) alone is now six). `app.py`
+replaces that with one flat, searchable list (`render_catalog`) — every
+module (plus the ground model interpreter, which isn't a `calcs.registry`
+entry) shown as a card with its name/discipline/description, filterable by
+free-text search (matches name, discipline, or description) and/or a
+discipline dropdown. Selecting a card (`render_module_detail`) opens that
+one calc's auto-built form full-width with a "Back to catalog" control;
+`st.session_state["selected_key"]` is the only navigation state, replacing
+the radio-plus-tabs pair. None of the genuinely generic machinery changed —
+`_field_widget`, `render_calc_module_tab`, `_apply_handoffs`, and
+`render_import_sidebar` are untouched, because `CalcModule.discipline` was
+already the only "where does this belong" metadata any of it needed,
+whether that drove a tab row (before) or a filter dropdown (now). The one
+real behavioural gap the rewrite had to close: with tabs, a same-discipline
+handoff target was already visible as a sibling tab; with only one module
+ever rendered at a time now, the post-run "Value(s) handed off" notice
+would otherwise just name a target the user has to go find in the catalog
+by hand. It now also renders an "Open `<target>` →" button per handed-off
+target (and the ground-model tab's own bearing-resistance handoff got the
+same treatment) that jumps straight into that module's detail view.
+Verified end-to-end in a real browser: searched for "motor" and got exactly
+the new module; ran it with a DOL-threshold-exceeding input and got the
+expected PASS headline, warnings, and risk flag; ran
+`load_schedule_diversity.py` and confirmed both its handoff targets (one
+same-discipline, one cross-discipline into Electrical (HV)) got "Open →"
+buttons, and clicking the cross-discipline one landed on
+`transformer_sizing.py` with `lv_demand_kva` correctly pre-filled at 21.04
+(the handed-off S total) rather than its 0.00 default.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
-base plate bending, highways/pavement civils calcs, motor starting for
-electrical LV)
-plus independent verification of every illustrative value flagged
-throughout the detail passes.
+base plate bending, highways/pavement civils calcs) plus independent
+verification of every illustrative value flagged throughout the detail
+passes.
 
 ## Getting started
 
@@ -619,6 +678,7 @@ python3 -m calcs.electrical_lv.load_schedule_diversity
 python3 -m calcs.electrical_lv.earth_fault_loop_impedance
 python3 -m calcs.electrical_lv.arc_flash_ppe_check
 python3 -m calcs.electrical_lv.earth_electrode_resistance
+python3 -m calcs.electrical_lv.motor_starting
 python3 -m calcs.electrical_hv.transformer_sizing
 python3 -m calcs.electrical_hv.protection_grading
 python3 -m calcs.electrical_hv.arc_flash_ppe_check
@@ -648,7 +708,7 @@ pytest
 
 ```
 total-auto/
-├── app.py                          # Streamlit UI — sidebar discipline nav, auto-generated form per calcs.registry module, CALC_HANDOFFS cross-module prefill
+├── app.py                          # Streamlit UI — searchable calc catalog + detail view, auto-generated form per calcs.registry module, CALC_HANDOFFS cross-module prefill
 ├── core/
 │   ├── calc_base.py                # Shared interfaces: CalcInput, CalcResult, registry
 │   ├── report.py                   # Turns a CalcResult into a review-ready markdown sheet
@@ -677,12 +737,13 @@ total-auto/
 │   │   ├── cut_fill_balance.py         # Grid-method cut/fill earthwork volume balance
 │   │   ├── surface_water_discharge.py  # Discharge rate check + flow control orifice sizing
 │   │   └── slope_stability.py          # Fellenius Method of Slices, EN 1997-1 UK NA DA1
-│   ├── electrical_lv/                # FIVE MODULES BUILT — see below
+│   ├── electrical_lv/                # SIX MODULES BUILT — see below
 │   │   ├── cable_sizing_voltage_drop.py    # BS 7671 Reg 433.1.1 + Appendix 4 voltage drop check
 │   │   ├── load_schedule_diversity.py      # P/Q load aggregation -> maximum demand current
 │   │   ├── earth_fault_loop_impedance.py   # BS 7671 Ch.41 Zs check for automatic disconnection
 │   │   ├── arc_flash_ppe_check.py          # PPE category classification (incident energy is a direct input, not derived)
-│   │   └── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
+│   │   ├── earth_electrode_resistance.py   # Dwight's formula, single vertical rod earth resistance
+│   │   └── motor_starting.py               # Starting current + simplified Ist/Isc voltage dip check, DOL threshold flag
 │   ├── electrical_hv/                # FOUR MODULES BUILT — see below
 │   │   ├── transformer_sizing.py     # LV demand + growth margin vs candidate transformer rating, HV/LV full-load current
 │   │   ├── protection_grading.py     # IEC 60255-151 IDMT relay operating time + grading margin check
@@ -698,7 +759,7 @@ total-auto/
 │   ├── render.py                   # Renders any discipline's sections to markdown
 │   ├── civils.py                   # BUILT — 9-section civils skeleton
 │   ├── structural.py               # BUILT — 9-section skeleton, scoped to industrial access steelwork
-│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; five calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance)
+│   ├── electrical_lv.py            # BUILT — 9-section skeleton, plant/industrial LV distribution; six calcs wired (cable sizing/voltage drop, load schedule/diversity, earth fault loop impedance, arc flash PPE category, earth electrode resistance, motor starting)
 │   ├── electrical_hv.py            # BUILT — 8-section skeleton, HV incoming supply/substations/transformers; four calcs wired (transformer sizing, protection grading, HV arc flash PPE, substation earthing/touch-step)
 │   └── mechanical_piping.py        # BUILT — 9-section skeleton, process piping (ASME B31.3 / BS EN 13480 generic); four calcs wired (line sizing/velocity, pipe stress, PED/PESR classification, support load schedule) -- all named calculations_required now built
 ├── integration/                      # BUILT — cross-discipline process flow / orchestration
@@ -729,6 +790,7 @@ total-auto/
 │   ├── test_earth_fault_loop_impedance.py # Validates Zs = Ze+(R1+R2)*factor arithmetic and utilisation check
 │   ├── test_arc_flash_ppe_check.py        # Validates PPE category banding and dangerous-energy flagging
 │   ├── test_earth_electrode_resistance.py # Validates Dwight's formula arithmetic and utilisation check
+│   ├── test_motor_starting.py      # Validates starting current/voltage dip arithmetic and DOL-threshold flagging
 │   ├── test_transformer_sizing.py  # Validates required capacity/utilisation and full-load current arithmetic
 │   ├── test_protection_grading.py  # Validates IEC 60255-151 IDMT operating time and grading margin arithmetic
 │   ├── test_hv_arc_flash_ppe_check.py  # Validates required PPE rating and practical-PPE-limit flagging
@@ -774,11 +836,12 @@ total-auto/
 - **The UI is a thin layer.** `app.py` just discovers registered calc modules and
   renders a form + result for whichever one is selected. Adding a new discipline means
   adding a new module + registering it — the app and report generator don't change.
-  Navigation groups by `CalcModule.discipline` (a sidebar selector scopes each
-  `st.tabs()` row to one discipline, ~7 tabs max instead of one flat row of 26+) and
-  declared cross-module handoffs (`CALC_HANDOFFS`) auto-prefill a target module's
-  form from a source module's result — both driven by metadata the modules already
-  carry, not new per-module UI code.
+  Navigation is a searchable catalog (free-text search plus a `CalcModule.discipline`
+  filter dropdown) rather than a per-module UI: opening a card renders that one
+  module's auto-built form full-width. Declared cross-module handoffs
+  (`CALC_HANDOFFS`) auto-prefill a target module's form from a source module's
+  result and surface an "Open →" button straight into that target — both driven by
+  metadata the modules already carry, not new per-module UI code.
 
 ## Continuing this project
 

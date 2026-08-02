@@ -56,8 +56,9 @@ Known simplifications / not implemented (see Warnings in the result):
   main incoming switchboard) -- does not build a hierarchical
   board-by-board/circuit-by-circuit load schedule.
 - Motor starting current (inrush) is not considered -- this is a running
-  (steady-state) load aggregation only; see the separate motor
-  control/switchgear starting-method criteria in the BoD.
+  (steady-state) load aggregation only; see
+  `calcs/electrical_lv/motor_starting.py` for the separate motor
+  starting current/voltage dip check.
 - Does not itself select a protective device or cable -- feed the resulting
   maximum demand current into `cable_sizing_voltage_drop.py` as `Ib`.
 """

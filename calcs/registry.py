@@ -20,6 +20,7 @@ from calcs.electrical_lv.cable_sizing_voltage_drop import MODULE as ELECTRICAL_L
 from calcs.electrical_lv.earth_electrode_resistance import MODULE as ELECTRICAL_LV_EARTH_ELECTRODE_RESISTANCE
 from calcs.electrical_lv.earth_fault_loop_impedance import MODULE as ELECTRICAL_LV_EARTH_FAULT_LOOP_IMPEDANCE
 from calcs.electrical_lv.load_schedule_diversity import MODULE as ELECTRICAL_LV_LOAD_SCHEDULE_DIVERSITY
+from calcs.electrical_lv.motor_starting import MODULE as ELECTRICAL_LV_MOTOR_STARTING
 from calcs.geotechnical.bearing_capacity import MODULE as GEOTECH_BEARING_CAPACITY
 from calcs.mechanical_piping.line_sizing_velocity_check import MODULE as MECHANICAL_PIPING_LINE_SIZING_VELOCITY_CHECK
 from calcs.mechanical_piping.ped_pesr_classification_check import MODULE as MECHANICAL_PIPING_PED_PESR_CLASSIFICATION_CHECK
@@ -49,6 +50,7 @@ CALC_REGISTRY: list[CalcModule] = [
     CIVIL_SLOPE_STABILITY,
     ELECTRICAL_LV_CABLE_SIZING_VOLTAGE_DROP,
     ELECTRICAL_LV_LOAD_SCHEDULE_DIVERSITY,
+    ELECTRICAL_LV_MOTOR_STARTING,
     ELECTRICAL_LV_EARTH_FAULT_LOOP_IMPEDANCE,
     ELECTRICAL_LV_ARC_FLASH_PPE_CHECK,
     ELECTRICAL_LV_EARTH_ELECTRODE_RESISTANCE,

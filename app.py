@@ -1,26 +1,32 @@
 """
 Streamlit UI for total-auto's engineering calculation tools.
 
-Navigation: a sidebar discipline selector (Ground model interpreter,
-Geotechnical, Structural, Civils, Electrical (LV), Electrical (HV),
-Mechanical Piping) scopes the main area to that discipline's modules only,
-shown as `st.tabs()`. With 26 registered calc modules across six
-disciplines, one flat row of tabs (the original design) had become the
-single biggest usability problem in the app -- this groups by
-`CalcModule.discipline` (already a required field, no new metadata needed)
-so each tab row stays short (max ~7) regardless of how many more modules
-get added.
+Navigation: a searchable catalog. `app.py` used to group modules into a
+sidebar discipline selector + `st.tabs()` per discipline, but that stopped
+scaling once the catalog grew past ~25 modules spread thin across just six
+disciplines -- finding a specific calc meant knowing which discipline
+bucket it lived in first. This replaces that with one flat, searchable list
+(`render_catalog`): every registered module (plus the ground model
+interpreter, which isn't a `calcs.registry` module) shown as a card with its
+name/discipline/description, filterable by a text search (matches name,
+discipline, or description) and/or a discipline dropdown. Opening a card
+(`render_module_detail`) shows that one calc's form full-width, with a
+"Back to catalog" control -- `st.session_state["selected_key"]` is the only
+piece of navigation state, replacing the old radio-plus-tabs pair.
 
 Cross-module handoffs: several calc modules are explicitly designed to
 consume another module's output (e.g. `load_schedule_diversity.py`'s
 maximum demand current feeding `cable_sizing_voltage_drop.py`'s design
-current -- see those modules' docstrings for the full list). Previously
-only the ground-model-interpreter -> bearing-resistance handoff actually
-worked in the UI; `CALC_HANDOFFS` below declares the rest and a generic
-mechanism (`_apply_handoffs`) pushes values into a per-target-module
-prefill store after any source module's result is computed, keyed off the
-same "Set <field>?"-aware form-prefill support `_field_widget` already had
-for the ground-model case (now generalised rather than special-cased).
+current -- see those modules' docstrings for the full list). `CALC_HANDOFFS`
+below declares them and a generic mechanism (`_apply_handoffs`) pushes
+values into a per-target-module prefill store after any source module's
+result is computed, keyed off the same "Set <field>?"-aware form-prefill
+support `_field_widget` already had for the ground-model case (generalised
+rather than special-cased). With the tab layout gone, a handoff's target
+module isn't visibly "one click away" the way an adjacent tab was -- so the
+post-run notice now includes an "Open <target> ->" button that jumps
+straight into the target module's detail view (via `selected_key`) instead
+of just naming it and leaving the user to find it in the catalog by hand.
 
 External data import: `render_import_sidebar()` accepts a JSON file (sidebar
 expander, "Import extracted data") keyed by module key -> {field: value},
@@ -36,12 +42,17 @@ simply absent from the JSON, left for direct manual entry, same discipline
 every calc module in this repo already applies to its own uncertain
 inputs).
 
-One tab per module in calcs.registry.CALC_REGISTRY, form auto-built from
-the module's pydantic input model (see _field_widget) — per the design
-principle in docs/ARCHITECTURE.md: "app.py just discovers registered calc
-modules and renders a form + result for whichever one is selected...
-adding a new discipline means adding a new module + registering it — the
-app and report generator don't change."
+One detail view per module in calcs.registry.CALC_REGISTRY, form
+auto-built from the module's pydantic input model (see _field_widget) —
+per the design principle in docs/ARCHITECTURE.md: "app.py just discovers
+registered calc modules and renders a form + result for whichever one is
+selected... adding a new discipline means adding a new module + registering
+it — the app and report generator don't change." That principle is exactly
+why the catalog rewrite below didn't need to touch `_field_widget`,
+`render_calc_module_tab`, `_apply_handoffs`, or `render_import_sidebar` at
+all -- `CalcModule.discipline` was already the only piece of "where does
+this belong" metadata anything needed, whether that metadata drove a tab
+row (before) or a filter dropdown (now).
 
 The generic form (_field_widget) introspects each pydantic v2 field's
 annotation, default, and constraint metadata (Ge/Gt/Le/Lt) to pick a
@@ -54,7 +65,7 @@ sentinel value that might itself fail validation (e.g. a gt=0 field can't
 default to 0 to mean "omit"). This trades the hand-laid-out columns/expanders
 the original bearing-resistance-specific tab had for genericity across every
 registered module — deliberate, since hand-laying-out a form per module
-doesn't scale to twenty-six (and growing) calc modules.
+doesn't scale to twenty-seven (and growing) calc modules.
 
 Run with: streamlit run app.py
 """
@@ -63,6 +74,7 @@ from __future__ import annotations
 
 import json
 import typing
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
@@ -83,6 +95,32 @@ from core.calc_base import CalcModule
 from core.report import render_report
 
 DISCIPLINE_ORDER = ["Geotechnical", "Structural", "Civils", "Electrical (LV)", "Electrical (HV)", "Mechanical Piping"]
+
+GROUND_MODEL_KEY = "_ground_model_interpreter"
+
+
+@dataclass(frozen=True)
+class CatalogEntry:
+    """One row in the searchable catalog -- either a registered CalcModule, or the
+    ground model interpreter (a bespoke tab, not a calcs.registry module, so it
+    doesn't have a CalcModule to draw this from)."""
+
+    key: str
+    name: str
+    discipline: str
+    description: str
+
+
+GROUND_MODEL_ENTRY = CatalogEntry(
+    key=GROUND_MODEL_KEY,
+    name="Ground model interpreter",
+    discipline="Geotechnical",
+    description=(
+        "Paste SPT/CPT/lab site investigation data for one soil stratum and derive characteristic design "
+        "parameters (phi', cu, unit weight) using established correlations, then hand them off to the "
+        "bearing resistance calc."
+    ),
+)
 
 # Declarative calc-to-calc handoffs: (source_module_key, source_selector, target_module_key, target_field_name).
 # source_selector is the literal string "headline", or a Term.label to match exactly
@@ -314,12 +352,12 @@ def render_calc_module_tab(module: CalcModule) -> None:
         result = module.calculate(inputs)
         handed_off_to = _apply_handoffs(module.key, result)
         # Stash rather than render inline: a handoff needs an immediate st.rerun()
-        # below so any OTHER tab's widgets pick up the freshly-updated prefill store
-        # before THEIR value= is applied this run (module iteration order within a
-        # discipline, or which discipline is even selected, isn't guaranteed to put
-        # the source ahead of every target the way the ground-model prefill always
-        # was). st.rerun() discards the one-shot `submitted` flag, so the result has
-        # to survive in session_state to still render after the restart.
+        # below because the catalog only ever renders ONE module's detail view per
+        # script execution -- a target module's widgets simply aren't built this
+        # run to pick up the freshly-updated prefill store, unlike the old sibling-
+        # tabs layout where same-discipline targets at least shared a run.
+        # st.rerun() discards the one-shot `submitted` flag, so the result has to
+        # survive in session_state to still render after the restart.
         st.session_state[result_key] = (inputs, result, handed_off_to)
         if handed_off_to:
             st.rerun()
@@ -330,7 +368,11 @@ def render_calc_module_tab(module: CalcModule) -> None:
         _render_result(module, inputs, result)
         if handed_off_to:
             names = ", ".join(m.name for m in handed_off_to)
-            st.info(f"Value(s) handed off — prefilled into: {names}. Switch to that tab to use them.")
+            st.info(f"Value(s) handed off — prefilled into: {names}.")
+            for target in handed_off_to:
+                if st.button(f"Open {target.name} →", key=f"jump__{module.key}__{target.key}"):
+                    st.session_state["selected_key"] = target.key
+                    st.rerun()
 
 
 def _render_result(module, inputs, result) -> None:
@@ -446,44 +488,119 @@ def render_ground_model_tab() -> None:
         # _apply_handoffs' per-field accumulation for other targets).
         _prefill_store()[BEARING_MODULE.key] = to_bearing_resistance_kwargs(design_params)
         _prefill_versions()[BEARING_MODULE.key] = _prefill_versions().get(BEARING_MODULE.key, 0) + 1
-        st.success(f"Derived parameters saved — switch to the '{BEARING_MODULE.name}' tab (under Geotechnical); they'll be pre-filled.")
+        st.success(f"Derived parameters saved — open '{BEARING_MODULE.name}' to use them; they'll be pre-filled.")
+        if st.button(f"Open {BEARING_MODULE.name} →", key="jump__ground_model__bearing"):
+            st.session_state["selected_key"] = BEARING_MODULE.key
+            st.rerun()
 
 
-def _modules_by_discipline() -> dict[str, list[CalcModule]]:
-    grouped: dict[str, list[CalcModule]] = {}
-    for module in CALC_REGISTRY:
-        grouped.setdefault(module.discipline, []).append(module)
-    return grouped
+def _discipline_sort_index(discipline: str) -> int:
+    try:
+        return DISCIPLINE_ORDER.index(discipline)
+    except ValueError:
+        return len(DISCIPLINE_ORDER)
+
+
+def _catalog_entries() -> list[CatalogEntry]:
+    """Every catalog row: the ground model interpreter plus one entry per registered
+    CalcModule. Order doesn't matter here -- render_catalog does its own sort."""
+    entries = [GROUND_MODEL_ENTRY]
+    entries.extend(
+        CatalogEntry(key=module.key, name=module.name, discipline=module.discipline, description=module.description)
+        for module in CALC_REGISTRY
+    )
+    return entries
+
+
+def _filter_entries(entries: list[CatalogEntry], query: str, discipline: str) -> list[CatalogEntry]:
+    filtered = entries
+    if discipline != "All disciplines":
+        filtered = [e for e in filtered if e.discipline == discipline]
+    q = query.strip().lower()
+    if q:
+        filtered = [e for e in filtered if q in e.name.lower() or q in e.discipline.lower() or q in e.description.lower()]
+    return filtered
+
+
+def render_catalog() -> None:
+    """The catalog home page: search/filter box, then every matching calc as a card
+    with an 'Open ->' button that switches into render_module_detail for that key."""
+    all_entries = _catalog_entries()
+    disciplines_present = sorted({e.discipline for e in all_entries}, key=_discipline_sort_index)
+
+    st.caption(
+        f"{len(all_entries)} calc tools across {len(disciplines_present)} disciplines. "
+        "Search by name, discipline, or keyword, or filter by discipline, then open one to run it."
+    )
+
+    col_search, col_filter = st.columns([3, 1])
+    with col_search:
+        query = st.text_input(
+            "Search calcs", placeholder="Search by name, discipline, or keyword...",
+            key="catalog_search", label_visibility="collapsed",
+        )
+    with col_filter:
+        discipline = st.selectbox(
+            "Discipline", ["All disciplines"] + disciplines_present,
+            key="catalog_discipline_filter", label_visibility="collapsed",
+        )
+
+    matches = _filter_entries(all_entries, query, discipline)
+    if not matches:
+        st.info("No calcs match that search/filter.")
+        return
+
+    for entry in sorted(matches, key=lambda e: (_discipline_sort_index(e.discipline), e.name)):
+        with st.container(border=True):
+            left, right = st.columns([5, 1])
+            with left:
+                st.markdown(f"**{entry.name}**")
+                st.caption(entry.discipline)
+                st.write(entry.description)
+            with right:
+                if st.button("Open →", key=f"open__{entry.key}", use_container_width=True):
+                    st.session_state["selected_key"] = entry.key
+                    st.rerun()
+
+
+def render_module_detail(key: str) -> None:
+    """Full-width detail view for one catalog entry -- the ground model interpreter's
+    bespoke tab, or a registered CalcModule's auto-built form via render_calc_module_tab."""
+    if st.button("← Back to catalog"):
+        st.session_state.pop("selected_key", None)
+        st.rerun()
+    st.divider()
+
+    if key == GROUND_MODEL_KEY:
+        render_ground_model_tab()
+        return
+
+    try:
+        module = get_module(key)
+    except KeyError:
+        st.error(f"'{key}' isn't a registered calc (it may have been removed or renamed).")
+        st.session_state.pop("selected_key", None)
+        return
+    render_calc_module_tab(module)
 
 
 def main() -> None:
     st.set_page_config(page_title="total-auto", layout="wide")
     st.title("total-auto — engineering calculation tools")
     st.caption(
-        "Ground model interpretation feeds the geotechnical bearing calc; every other module is "
-        "discovered from calcs.registry.CALC_REGISTRY and grouped by discipline in the sidebar. "
-        "See docs/ROADMAP.md for what's planned beyond this."
+        "Search or browse the full calc catalog below and open one to run it. See docs/ROADMAP.md for "
+        "what's planned beyond this."
     )
 
-    # Runs before the discipline radio/tabs below so a same-run import (see its
-    # own docstring) writes to the prefill store before any tab's widgets read it.
+    # Runs before the catalog/detail view below so a same-run import (see its own
+    # docstring) writes to the prefill store before any widgets read it.
     render_import_sidebar()
 
-    grouped = _modules_by_discipline()
-    discipline_options = [d for d in DISCIPLINE_ORDER if grouped.get(d)]
-    sidebar_labels = ["Ground model interpreter"] + [f"{d} ({len(grouped[d])})" for d in discipline_options]
-    selected = st.sidebar.radio("Discipline", sidebar_labels)
-
-    if selected == "Ground model interpreter":
-        render_ground_model_tab()
-        return
-
-    discipline = discipline_options[sidebar_labels.index(selected) - 1]
-    modules = grouped[discipline]
-    tabs = st.tabs([module.name for module in modules])
-    for tab, module in zip(tabs, modules):
-        with tab:
-            render_calc_module_tab(module)
+    selected_key = st.session_state.get("selected_key")
+    if selected_key:
+        render_module_detail(selected_key)
+    else:
+        render_catalog()
 
 
 if __name__ == "__main__":

@@ -25,9 +25,11 @@ name what's needed and `calc_module_reference` is set once the matching
 module exists (see calcs/electrical_lv/cable_sizing_voltage_drop.py,
 calcs/electrical_lv/load_schedule_diversity.py,
 calcs/electrical_lv/earth_fault_loop_impedance.py,
-calcs/electrical_lv/arc_flash_ppe_check.py, and
-calcs/electrical_lv/earth_electrode_resistance.py for the first five); the
-rest remain unset until built.
+calcs/electrical_lv/arc_flash_ppe_check.py,
+calcs/electrical_lv/earth_electrode_resistance.py, and
+calcs/electrical_lv/motor_starting.py (motor starting current/voltage dip,
+built after being explicitly deferred earlier -- see docs/ROADMAP.md) for
+these six); the rest remain unset until built.
 """
 
 from __future__ import annotations
@@ -212,6 +214,14 @@ def build_electrical_lv_bod_skeleton(project_reference: Optional[str] = None) ->
             ],
             interfaces=[
                 Interface(with_discipline="mechanical_piping", description="Motor/pump loads to be scheduled once the mechanical piping BoD is built."),
+            ],
+            calculations_required=[
+                CalculationRequirement(
+                    name="Motor starting current and voltage dip check",
+                    description="Starting current from FLC and a motor/method-specific starting multiplier, and the resulting voltage dip at the point of connection via a simplified source-impedance approximation, checked against a permissible dip limit -- also flags a DOL start above the DOL threshold criterion below, calcs/electrical_lv/motor_starting.py. starting_current_multiplier and source_fault_current_a are required direct inputs, not derived or read from a fixed table -- see that module's docstring.",
+                    standard_reference="IEC 60034-12",
+                    calc_module_reference="electrical_lv_motor_starting",
+                ),
             ],
             criteria=[
                 DesignCriterion(name="Direct-on-line (DOL) starting threshold", value="5.5", unit="kW", notes="Typical threshold above which soft-start/VSD starting is considered instead of DOL, to limit supply disturbance — confirm against the actual site supply fault level/capacity."),
