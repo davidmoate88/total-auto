@@ -116,9 +116,10 @@ GROUND_MODEL_ENTRY = CatalogEntry(
     name="Ground model interpreter",
     discipline="Geotechnical",
     description=(
-        "Paste SPT/CPT/lab site investigation data for one soil stratum and derive characteristic design "
-        "parameters (phi', cu, unit weight) using established correlations, then hand them off to the "
-        "bearing resistance calc."
+        "Build a full layered soil profile from pasted SPT/CPT/lab site investigation data (or import one "
+        "from a GI report), interpret it as one profile so overburden stress is correct across every layer, "
+        "and derive characteristic design parameters (phi', cu, unit weight) per stratum, then hand any one "
+        "off to the bearing resistance calc."
     ),
 )
 
