@@ -358,6 +358,86 @@ truth for "what fields does this module take" — the schema export, the
 skill's instructions, and the app's import validation can't drift apart from
 each other the way three hand-written copies would.
 
+**The ground model interpreter: multi-stratum profiles.** `render_ground_model_tab`
+originally interpreted exactly one `Stratum` per run, wrapped as
+`SiteInvestigation(strata=[stratum])`. This was a real accuracy gap, not
+just a UI limitation: `interpret_stratum`'s stress-dependent correlations
+(the SPT overburden correction factor `Cn`, the CPT phi'/cu correlations)
+derive sigma_eff from `overburden_profile_kpa`, which walks `site.strata` --
+so a deeper stratum interpreted alone, with nothing above it in that list,
+silently understated the weight of everything actually above it on a real
+multi-layer site. The `Stratum`/`SiteInvestigation` models
+(`calcs/geotechnical/interpretation/models.py`) were already built for a
+full layered profile (`strata: list[Stratum]`, validated contiguous, no
+gaps/overlaps) and `overburden_profile_kpa`/`interpret_stratum` were already
+tested against a genuine multi-layer fixture
+(`tests/test_ground_model.py`'s `_multi_layer_site`) -- only the UI had
+never been built out to let an engineer enter more than one stratum.
+
+The rework keeps that backend entirely untouched (zero calc-logic changes,
+zero new pytest coverage needed) and replaces the single-stratum form with
+a build-then-interpret flow, backed by `_gi_strata()` -- a plain list of raw
+stratum dicts in `st.session_state["gi_strata"]`, deliberately NOT a list of
+already-constructed `Stratum` objects, so JSON-imported and hand-entered
+strata share one representation and one parsing point:
+
+- **"Add a stratum"** (`st.form`, matching `render_calc_module_tab`'s
+  atomic-submit pattern) captures one stratum's raw name/behaviour/depths/
+  unit weight/paste-text and appends it to `_gi_strata()` -- light
+  validation only (`base_depth_m > top_depth_m`); the top-depth default
+  auto-continues from the previous stratum's base depth, nudging toward a
+  contiguous profile without enforcing it up front.
+- **"Interpret full profile"** (`_interpret_profile`) is where the real work
+  happens: parses every stratum's paste text (same `parse_spt_lines`/
+  `parse_cpt_lines`/`parse_lab_lines` the single-stratum flow always used),
+  constructs every `Stratum`, builds ONE `SiteInvestigation` from the
+  complete list (this is what makes the overburden profile correct), then
+  runs `interpret_stratum` once per stratum against that shared site --
+  each stratum's own readings, but the FULL site's overburden. Result is
+  stashed in `st.session_state["gi_profile_result"]` rather than rendered
+  inline, the same persist-across-reruns reason `render_calc_module_tab`
+  stashes into `last_result__<key>`: a "push to bearing resistance" click
+  below triggers `st.rerun()`, and the derived parameters need to survive
+  that restart to still render.
+- **Per-stratum push-to-bearing** -- with N strata now possible instead of
+  one, each gets its own button
+  (`f"Push '{stratum.name}' → open {BEARING_MODULE.name}"`, key suffixed by
+  index). Earlier in this same rework a two-click version of this (a
+  "Push" button whose success message contained a nested "Open →" button)
+  was caught and fixed before shipping: a button rendered only inside
+  another button's `if` block is only reachable in the ONE rerun
+  immediately following ITS OWN click -- clicking it a run after its parent
+  button's condition has gone back to `False` is silently dropped, because
+  the code path that would handle it never executes. Setting the prefill
+  and calling `st.session_state["selected_key"] = BEARING_MODULE.key` in a
+  single click sidesteps the whole class of bug rather than relying on two
+  sequential clicks landing in the right runs.
+
+**`fill-ground-model-from-gi-report` + "Import GI-derived strata (JSON)".**
+Counterpart to `fill-calc-inputs-from-drawings`, same "flag, don't guess"
+contract, aimed at the ground model interpreter instead of a
+`calcs.registry` module -- which is exactly why it needed its own skill and
+its own import path rather than reusing the electrical one: there's no
+`calcs.schema_export` entry for a tool that isn't a registered `CalcModule`,
+and the import shape here (`water_table_depth_m` plus a list of stratum
+objects) doesn't fit `render_import_sidebar`'s `module_key -> {field:
+value}` contract at all. `render_gi_import_expander`/`_import_gi_profile`
+live inside `render_ground_model_tab` itself rather than the global sidebar,
+so the control only appears where it's relevant. One design choice worth
+calling out: a stratum is only importable when all of `Stratum`'s own
+required scalar fields (`name`/`behavior`/`top_depth_m`/`base_depth_m`/
+`assumed_unit_weight_kn_m3`) are present -- unlike the electrical import,
+there's no live per-field form to partially prefill an already-added
+stratum into, so "skip this whole stratum, report exactly why, add it by
+hand" is the safe fallback rather than inventing a behaviour classification
+or a unit weight to make an incomplete entry "work." The skill itself adds
+one more layer to the "never guess" discipline beyond `fill-calc-inputs-
+from-drawings`: a real GI report usually covers several boreholes/trial pits
+with genuinely different stratification, and blending them into one
+profile would itself be an invented number, so the skill picks ONE
+representative log and states which (and why) in its extraction notes,
+rather than averaging boundary depths across logs.
+
 ## Civils calcs (`calcs/civil/`) and cross-domain DA1 reuse
 
 The first two `calcs/civil/` modules answer `retaining_structures`'s two

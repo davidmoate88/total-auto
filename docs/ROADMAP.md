@@ -763,6 +763,66 @@ plan, not a user manual.
       clicking through. 381/381 tests passing (app.py has no direct
       pytest coverage; verification was end-to-end in a real browser, per
       this repo's established practice for UI changes).
+- [x] Ground model interpreter: multi-stratum profiles -- the user wanted
+      to hand Claude a full GI report and get "usable factual data" for the
+      calc tools; scoping that turned up a real accuracy gap first. The
+      overburden-stress term several correlations depend on (SPT `Cn`, CPT
+      phi'/cu) is derived by walking the WHOLE layered profile above a
+      point, but `render_ground_model_tab` only ever let an engineer enter
+      ONE stratum per run -- so a deeper stratum interpreted alone silently
+      understated the weight actually above it on any real multi-layer
+      site. `Stratum`/`SiteInvestigation` (`calcs/geotechnical/
+      interpretation/models.py`) and `overburden_profile_kpa`/
+      `interpret_stratum` were already built and tested for a full profile
+      (`tests/test_ground_model.py`'s `_multi_layer_site` fixture) -- only
+      the UI had never caught up, so this was purely an `app.py` rework,
+      zero calc-logic changes, zero new pytest coverage needed. Replaced
+      the single-stratum form with build-then-interpret: "Add a stratum"
+      appends to a session-state stratum list ("Profile so far", with
+      Remove), "Interpret full profile" builds ONE `SiteInvestigation` from
+      the whole list (correct overburden) and runs `interpret_stratum` per
+      stratum against it, each with its own "push to bearing resistance"
+      button. Caught and fixed a bug before shipping: an initial version
+      nested a "push" button's "open" action inside the push button's own
+      `if` block -- only reachable in the ONE rerun immediately after ITS
+      OWN click, so a click on it a run after the parent's condition
+      reverts to `False` is silently dropped. Fixed by combining "set
+      prefill" and "navigate" into one click. Verified end-to-end in a real
+      browser against the exact `_multi_layer_site` fixture (fill 0-1m
+      granular no lab data, sand 1-6m with SPT/CPT/lab bulk density):
+      derived sand's phi'=32.5 deg and unit weight=19.0 kN/m^3 (lab-derived,
+      overriding the 18.0 assumed default) matching the pytest fixture
+      exactly, and confirmed the bearing-resistance prefill carried the
+      right per-stratum values (32.52/19.00) through, not fill's. 381/381
+      tests passing (no backend changes; browser-verified per the same UI
+      convention as above).
+- [x] `fill-ground-model-from-gi-report` skill + "Import GI-derived strata
+      (JSON)" -- answers the user's original ask directly. Same "flag,
+      don't guess" contract as `fill-calc-inputs-from-drawings`, but needed
+      its own skill and import path since the ground model interpreter
+      isn't a `calcs.registry` module: no `calcs.schema_export` entry for
+      it, and the import shape (`water_table_depth_m` + a stratum list)
+      doesn't fit the generic sidebar's `module_key -> {field: value}`
+      contract. `render_gi_import_expander`/`_import_gi_profile` live
+      inside the ground model tab itself. A stratum is only importable
+      when all of `Stratum`'s own required fields
+      (name/behavior/top_depth_m/base_depth_m/assumed_unit_weight_kn_m3)
+      are present -- no live per-field form to partially prefill an
+      incomplete one into, unlike the electrical import, so an incomplete
+      stratum is skipped whole with exactly why reported, not guessed into
+      "working." The skill adds one more "never guess" layer beyond its
+      electrical counterpart: a real GI report usually covers several
+      boreholes with genuinely different stratification, and blending them
+      into one profile would itself be an invented number -- the skill
+      picks ONE representative borehole/trial pit log and states which,
+      and why, in its extraction notes, rather than averaging boundary
+      depths across logs. Verified the import path directly with a Python
+      call (bypassing the OS file-picker dialog, which this session's
+      browser automation can't drive): fed `_import_gi_profile` the same
+      fill/sand fixture data plus a deliberately incomplete third stratum
+      (missing `base_depth_m`/`assumed_unit_weight_kn_m3`) -- the two
+      complete strata imported intact, the incomplete one correctly
+      skipped with a clear "missing required field(s)" message.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text

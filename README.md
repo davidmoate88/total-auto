@@ -18,9 +18,12 @@ exact steps and open items from where this was left off.
 to **EN 1997-1 (Eurocode 7) Annex D, UK National Annex, Design Approach 1** — built
 inside a small extensible framework so future disciplines (structural, civil, etc.)
 and eventually the wider portfolio/comms tooling slot in the same way. In front of it
-sits a **ground model interpreter**: paste SPT/CPT/lab site investigation data per
-soil stratum and it derives characteristic design parameters (phi', cu, unit weight)
-using established correlations, then hands them straight to the bearing resistance calc.
+sits a **ground model interpreter**: build up a full layered soil profile (one
+stratum at a time, from pasted SPT/CPT/lab site investigation data), interpret
+the whole profile together so overburden stress is correct across every layer,
+and derive characteristic design parameters (phi', cu, unit weight) per stratum
+using established correlations, then hand any one of them straight to the
+bearing resistance calc.
 
 **All calculations in this repo are intended to be Eurocode-compliant.** Read the
 caveat in `calcs/geotechnical/bearing_capacity.py`'s module docstring before relying
@@ -644,6 +647,69 @@ buttons, and clicking the cross-discipline one landed on
 `transformer_sizing.py` with `lv_demand_kva` correctly pre-filled at 21.04
 (the handed-off S total) rather than its 0.00 default.
 
+**Ground model interpreter: multi-stratum profiles.** The user wanted to be
+able to hand Claude a full ground investigation (GI) report and have it
+"transposed to usable factual data" for the calc tools. Digging into the
+existing single-stratum ground model interpreter to figure out the right
+shape for that turned up a real accuracy gap worth fixing first: the
+correlations' overburden-stress term (the SPT `Cn` correction, the CPT
+phi'/cu correlations) is derived by walking the *whole* layered profile
+above the point in question, but the tool only ever let an engineer enter
+ONE stratum per run — so a deeper stratum interpreted in isolation silently
+understated the weight of everything actually above it on any real
+multi-layer site. The `Stratum`/`SiteInvestigation` data models
+(`calcs/geotechnical/interpretation/models.py`) and the overburden/
+correlation logic were already built and tested for a full layered profile
+(`tests/test_ground_model.py`'s `_multi_layer_site` fixture) — only the UI
+had never caught up. `app.py`'s `render_ground_model_tab` now builds a
+profile up one stratum at a time ("Add a stratum" → "Profile so far" list,
+with Remove), then interprets the WHOLE profile together
+("Interpret full profile") so every stratum's overburden is correct, with
+its own "push to bearing resistance" button per stratum rather than the
+old single implicit handoff. Zero changes to the calc logic itself (already
+correct, already tested) — this was purely an app.py rework. Caught and
+fixed one bug before shipping: an initial version nested a "push" button's
+"open" action inside the push button's own `if` block, which only ever
+gets ONE rerun to register a second click in before its parent condition
+goes back to `False` — fixed by combining "set the prefill" and "navigate"
+into a single click. Verified end-to-end in a real browser against the
+exact `_multi_layer_site` fixture (a "fill" stratum 0–1m, granular, no lab
+data, and a "sand" stratum 1–6m with SPT/CPT/lab bulk density data): derived
+sand's characteristic phi' = 32.5° and unit weight = 19.0 kN/m³ (correctly
+taken from its lab bulk density, overriding the 18.0 assumed default) —
+matching the pytest-verified fixture exactly — and confirmed the resulting
+bearing-resistance prefill carried through with the right per-stratum
+values (32.52°/19.00 kN/m³), not fill's.
+
+**`fill-ground-model-from-gi-report` skill + "Import GI-derived strata
+(JSON)".** Answers the user's original ask directly: read a full GI report
+and turn it into a ready-to-import ground model, the same "flag, don't
+guess" counterpart to `fill-calc-inputs-from-drawings` but for the ground
+model interpreter, which isn't a `calcs.registry` module and so needed its
+own skill and its own import mechanism rather than reusing the electrical
+one — there's no `calcs.schema_export` entry for it, and the import shape
+(`water_table_depth_m` + a list of stratum objects) doesn't fit the generic
+sidebar's `module_key -> {field: value}` contract. `render_gi_import_expander`/
+`_import_gi_profile` live inside the ground model tab itself, scoped to
+where they're relevant. A stratum is only importable when all of
+`Stratum`'s own required fields are present — no live per-field form to
+partially prefill an incomplete one into, so an incomplete stratum is
+skipped whole, with exactly why reported back, rather than guessed into
+"working." The skill adds one more layer to "never guess" beyond its
+electrical counterpart: a real GI report usually covers several boreholes
+with genuinely different stratification, and blending them into one
+profile would itself be an invented number — the skill picks ONE
+representative borehole/trial pit log and states which, and why, in its
+extraction notes, rather than averaging boundary depths across logs.
+Verified the import path directly (bypassing the OS file-picker dialog,
+which the browser automation available in this session can't drive): fed
+`_import_gi_profile` a JSON with the same fill/sand fixture data plus a
+deliberately incomplete third stratum (missing `base_depth_m` and
+`assumed_unit_weight_kn_m3`) — the two complete strata imported with every
+field intact, and the incomplete one was correctly skipped with a clear
+"missing required field(s)" message rather than silently dropped or
+half-imported.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs) plus independent
 verification of every illustrative value flagged throughout the detail
@@ -807,8 +873,10 @@ total-auto/
 │   └── test_integration.py         # Validates the dependency graph, cycle detection, open items, master document
 ├── .claude/
 │   └── skills/
-│       └── fill-calc-inputs-from-drawings/
-│           └── SKILL.md            # Claude Code skill: reads a GA/SLD/schedule, produces JSON matching calcs.schema_export's shape for app.py's import feature
+│       ├── fill-calc-inputs-from-drawings/
+│       │   └── SKILL.md            # Claude Code skill: reads a GA/SLD/schedule, produces JSON matching calcs.schema_export's shape for app.py's import feature
+│       └── fill-ground-model-from-gi-report/
+│           └── SKILL.md            # Claude Code skill: reads a GI report, produces JSON strata for the ground model interpreter's "Import GI-derived strata" feature
 └── docs/
     ├── ARCHITECTURE.md             # Domain map, design principles, integration points
     ├── ROADMAP.md                  # Full vision and build order

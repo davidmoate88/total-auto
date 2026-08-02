@@ -213,6 +213,14 @@ def _prefill_versions() -> dict[str, int]:
     return st.session_state.setdefault("calc_prefill_version", {})
 
 
+def _gi_strata() -> list[dict]:
+    """The ground model tab's in-progress site profile: a list of raw stratum dicts
+    (name/behavior/depths/unit weight/paste-text), built up by 'Add stratum to
+    profile' and/or the GI import expander, parsed into real Stratum objects only
+    at 'Interpret full profile' time -- see render_ground_model_tab."""
+    return st.session_state.setdefault("gi_strata", [])
+
+
 def _set_prefill(target_key: str, field_name: str, value) -> None:
     """
     Write one field's value into target_key's prefill store and bump its version
@@ -400,98 +408,294 @@ def _render_result(module, inputs, result) -> None:
     st.download_button("Download report (.md)", data=report_md, file_name=f"{module.key}_report.md", mime="text/markdown", key=f"download__{module.key}")
 
 
+_GI_STRATUM_REQUIRED_FIELDS = ("name", "behavior", "top_depth_m", "base_depth_m", "assumed_unit_weight_kn_m3")
+_GI_STRATUM_TEXT_FIELDS = ("spt_text", "cpt_text", "lab_text")
+
+
+def _import_gi_profile(payload: dict) -> tuple[int, list[str]]:
+    """
+    Populates _gi_strata() from an uploaded GI-derived JSON payload (see
+    render_gi_import_expander). A stratum is only importable when all of
+    Stratum's own required scalar fields (name/behavior/top_depth_m/
+    base_depth_m/assumed_unit_weight_kn_m3) are present -- there's no live
+    per-field form to partially prefill the way CalcModule imports have, so
+    "skip this stratum, report why, add it by hand" is the safe fallback
+    rather than guessing a behavior classification or a unit weight. SPT/CPT/
+    lab paste text default to empty (Stratum's own list fields already
+    default that way) -- an empty-but-correctly-placed stratum is still
+    useful, same as adding one by hand with no data pasted in yet.
+    """
+    problems: list[str] = []
+    added = 0
+
+    water_table = payload.get("water_table_depth_m")
+    if water_table is not None:
+        try:
+            st.session_state["gm_water_table_raw"] = float(water_table)
+        except (TypeError, ValueError):
+            problems.append(f"'water_table_depth_m': not a number ('{water_table}') -- ignored.")
+
+    raw_strata = payload.get("strata")
+    if not isinstance(raw_strata, list):
+        problems.append("Expected a top-level 'strata' list -- none found.")
+        return added, problems
+
+    recognised = set(_GI_STRATUM_REQUIRED_FIELDS) | set(_GI_STRATUM_TEXT_FIELDS)
+    strata = _gi_strata()
+    for i, entry in enumerate(raw_strata):
+        label = entry.get("name", f"strata[{i}]") if isinstance(entry, dict) else f"strata[{i}]"
+        if not isinstance(entry, dict):
+            problems.append(f"'{label}': expected an object, got {type(entry).__name__} -- skipped.")
+            continue
+        missing = [f for f in _GI_STRATUM_REQUIRED_FIELDS if entry.get(f) in (None, "")]
+        if missing:
+            problems.append(f"'{label}': missing required field(s) {', '.join(missing)} -- skipped, add manually.")
+            continue
+        if entry["behavior"] not in ("granular", "cohesive"):
+            problems.append(f"'{label}': behavior must be 'granular' or 'cohesive', got '{entry['behavior']}' -- skipped.")
+            continue
+        for key in entry:
+            if key not in recognised:
+                problems.append(f"'{label}.{key}': not a recognised field -- ignored.")
+        try:
+            strata.append({
+                "name": str(entry["name"]),
+                "behavior": entry["behavior"],
+                "top_depth_m": float(entry["top_depth_m"]),
+                "base_depth_m": float(entry["base_depth_m"]),
+                "assumed_unit_weight_kn_m3": float(entry["assumed_unit_weight_kn_m3"]),
+                "spt_text": str(entry.get("spt_text") or ""),
+                "cpt_text": str(entry.get("cpt_text") or ""),
+                "lab_text": str(entry.get("lab_text") or ""),
+            })
+        except (TypeError, ValueError) as exc:
+            problems.append(f"'{label}': {exc} -- skipped.")
+            continue
+        added += 1
+
+    return added, problems
+
+
+def render_gi_import_expander() -> None:
+    """
+    Sidebar-style "Import GI-derived strata (JSON)" expander, scoped to this tab
+    (not the generic calcs.registry import sidebar) because the shape here --
+    water_table_depth_m plus a list of stratum objects -- doesn't fit that
+    mechanism's module_key -> {field: value} contract; the ground model
+    interpreter isn't a registered CalcModule to begin with. Counterpart to the
+    .claude/skills/fill-ground-model-from-gi-report/ skill, same "flag, don't
+    guess" contract as fill-calc-inputs-from-drawings.
+    """
+    with st.expander("Import GI-derived strata (JSON)"):
+        st.caption(
+            "Upload a JSON file produced by the 'fill-ground-model-from-gi-report' skill (or "
+            "matching its shape by hand) to add strata to the profile below without retyping them. "
+            "See .claude/skills/fill-ground-model-from-gi-report/SKILL.md."
+        )
+        uploaded = st.file_uploader("Import file", type=["json"], key="gi_import_uploader", label_visibility="collapsed")
+        if uploaded is not None and st.button("Import", key="gi_import_button"):
+            try:
+                payload = json.loads(uploaded.getvalue().decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                st.session_state["_gi_import_summary"] = (0, [f"Could not parse the uploaded file as JSON: {exc}"])
+            else:
+                if not isinstance(payload, dict):
+                    st.session_state["_gi_import_summary"] = (0, ["Expected a top-level JSON object with a 'strata' list."])
+                else:
+                    st.session_state["_gi_import_summary"] = _import_gi_profile(payload)
+            if st.session_state.get("_gi_import_summary", (0,))[0]:
+                st.session_state.pop("gi_profile_result", None)
+                st.rerun()
+
+        summary = st.session_state.get("_gi_import_summary")
+        if summary:
+            added, problems = summary
+            if added:
+                st.success(f"Added {added} stratum/strata to the profile below.")
+            for p in problems:
+                st.warning(p)
+
+
+def _interpret_profile(strata_raw: list[dict], water_table_depth_m: Optional[float]) -> None:
+    """
+    Parses every stratum's paste text, builds ONE SiteInvestigation from all of
+    them together (so overburden stress -- and therefore any stress-dependent
+    correlation -- is computed across the full profile, not just whichever
+    stratum happens to be interpreted), then runs interpret_stratum per
+    stratum against that shared site. Stores the outcome in session_state
+    (see _render_profile_result) rather than rendering inline, matching
+    render_calc_module_tab's pattern -- results need to survive the rerun a
+    "push to bearing resistance" button below triggers.
+    """
+    problems: list[str] = []
+    built: list[Stratum] = []
+    for s in strata_raw:
+        spt_readings, spt_unparsed = parse_spt_lines(s["spt_text"])
+        cpt_readings, cpt_unparsed = parse_cpt_lines(s["cpt_text"])
+        lab_tests, lab_unparsed = parse_lab_lines(s["lab_text"])
+        problems.extend(f"'{s['name']}': could not parse SPT line: '{u}'" for u in spt_unparsed)
+        problems.extend(f"'{s['name']}': could not parse CPT line: '{u}'" for u in cpt_unparsed)
+        problems.extend(f"'{s['name']}': could not parse lab test line: '{u}'" for u in lab_unparsed)
+        try:
+            built.append(Stratum(
+                name=s["name"], top_depth_m=s["top_depth_m"], base_depth_m=s["base_depth_m"],
+                behavior=s["behavior"], assumed_unit_weight_kn_m3=s["assumed_unit_weight_kn_m3"],
+                spt_readings=spt_readings, cpt_readings=cpt_readings, lab_tests=lab_tests,
+            ))
+        except ValidationError as exc:
+            for err in exc.errors():
+                problems.append(f"'{s['name']}': {'.'.join(str(p) for p in err['loc'])}: {err['msg']}")
+
+    site = None
+    if len(built) == len(strata_raw):
+        try:
+            site = SiteInvestigation(water_table_depth_m=water_table_depth_m, strata=built)
+        except ValidationError as exc:
+            for err in exc.errors():
+                problems.append(f"Profile: {'.'.join(str(p) for p in err['loc'])}: {err['msg']}")
+
+    results = []
+    if site is not None:
+        for stratum in built:
+            design_params, notes = interpret_stratum(site, stratum)
+            results.append((stratum, design_params, notes))
+
+    st.session_state["gi_profile_result"] = {"problems": problems, "results": results}
+
+
+def _render_profile_result() -> None:
+    stored = st.session_state.get("gi_profile_result")
+    if not stored:
+        return
+
+    for p in stored["problems"]:
+        st.warning(p)
+    if not stored["results"]:
+        if stored["problems"]:
+            st.error("Could not interpret the profile — fix the issue(s) above and try again.")
+        return
+
+    st.markdown("### Derived characteristic parameters")
+    for i, (stratum, design_params, notes) in enumerate(stored["results"]):
+        st.markdown(f"**{stratum.name}** — {stratum.behavior}, {stratum.top_depth_m:.2f}–{stratum.base_depth_m:.2f} m bgl")
+        cols = st.columns(3)
+        if design_params.phi_deg is not None:
+            cols[0].metric("phi' (deg)", f"{design_params.phi_deg:.1f}")
+        if design_params.cu_kpa is not None:
+            cols[1].metric("cu (kPa)", f"{design_params.cu_kpa:.1f}")
+        cols[2].metric("Unit weight (kN/m^3)", f"{design_params.unit_weight_kn_m3:.1f}")
+
+        for w in design_params.warnings:
+            st.warning(w)
+        with st.expander(f"Derivation notes — {stratum.name}"):
+            for n in notes:
+                st.text(n)
+
+        # One button, not "push" then a nested "open" — a button rendered only
+        # inside another button's if-block only ever gets ONE rerun to be seen
+        # in (the same run its parent was clicked), so a second click on it is
+        # silently lost once the parent's own condition goes back to False on
+        # the very next rerun. Setting the prefill and navigating together in
+        # a single click sidesteps that rather than relying on two clicks.
+        if st.button(f"Push '{stratum.name}' → open {BEARING_MODULE.name}", key=f"push_bearing__{i}"):
+            _prefill_store()[BEARING_MODULE.key] = to_bearing_resistance_kwargs(design_params)
+            _prefill_versions()[BEARING_MODULE.key] = _prefill_versions().get(BEARING_MODULE.key, 0) + 1
+            st.session_state["selected_key"] = BEARING_MODULE.key
+            st.rerun()
+        st.divider()
+
+
 def render_ground_model_tab() -> None:
     st.subheader("Ground model interpreter")
     st.caption(
-        "Paste site investigation data for one stratum (soil layer) below, one reading per line. "
-        "This is a lenient line parser, not free-form report reading — unparsed lines are shown "
-        "back to you rather than silently dropped. For a real narrative report excerpt, it's "
-        "usually more reliable to have it read directly and translated into this format."
+        "Build a full layered ground model, one stratum (soil layer) at a time, then interpret the "
+        "whole profile together — overburden stress, which several correlations depend on, is "
+        "calculated across the FULL profile below a given depth, not just the stratum you're "
+        "deriving parameters for, so a deeper stratum needs the shallower ones added too for an "
+        "accurate result. Paste site investigation data one reading per line — a lenient line "
+        "parser, not free-form report reading; unparsed lines are shown back to you rather than "
+        "silently dropped. For a real GI report, see the import expander below."
     )
 
-    colA, colB, colC = st.columns(3)
-    with colA:
-        behavior = st.selectbox("Soil behaviour", ["granular", "cohesive"])
-    with colB:
-        top_depth_m = st.number_input("Stratum top depth (m)", value=0.0, min_value=0.0)
-    with colC:
-        base_depth_m = st.number_input("Stratum base depth (m)", value=5.0, min_value=0.01)
+    render_gi_import_expander()
 
-    assumed_unit_weight = st.number_input(
-        "Assumed/typical bulk unit weight for this stratum (kN/m^3) — used for overburden "
-        "stress calcs; overridden by lab bulk density data if provided below",
-        value=18.0, min_value=1.0,
+    water_table_depth_m_raw = st.number_input(
+        "Water table depth (m bgl, 0 = at surface, leave large if none) — applies to the whole profile",
+        value=100.0, min_value=0.0, key="gm_water_table_raw",
     )
-    water_table_depth_m_raw = st.number_input("Water table depth (m bgl, 0 = at surface, leave large if none)", value=100.0, min_value=0.0)
     water_table_depth_m = None if water_table_depth_m_raw >= 90 else water_table_depth_m_raw
 
-    st.markdown("**SPT readings** — one per line: `depth, N` or `depth, N, energy_ratio_pct`")
-    spt_text = st.text_area("SPT data", placeholder="1.0, 8\n2.0, 14\n3.0, 22, 45", height=100)
+    strata = _gi_strata()
 
-    st.markdown("**CPT readings** — one per line: `depth, qc_MPa` or `depth, qc_MPa, fs_kPa`")
-    cpt_text = st.text_area("CPT data", placeholder="1.0, 3.2\n2.0, 5.6", height=100)
+    st.markdown("### Add a stratum")
+    with st.form("gi_add_stratum_form", clear_on_submit=True):
+        default_top = strata[-1]["base_depth_m"] if strata else 0.0
+        name = st.text_input("Stratum name", value=f"Stratum {len(strata) + 1}")
+        colA, colB, colC = st.columns(3)
+        with colA:
+            behavior = st.selectbox("Soil behaviour", ["granular", "cohesive"])
+        with colB:
+            top_depth_m = st.number_input("Top depth (m)", value=default_top, min_value=0.0)
+        with colC:
+            base_depth_m = st.number_input("Base depth (m)", value=default_top + 2.0, min_value=0.01)
+        assumed_unit_weight = st.number_input(
+            "Assumed/typical bulk unit weight (kN/m^3) — used for overburden stress; overridden "
+            "by lab bulk density data if provided below",
+            value=18.0, min_value=1.0,
+        )
+        st.markdown("**SPT readings** — one per line: `depth, N` or `depth, N, energy_ratio_pct`")
+        spt_text = st.text_area("SPT data", placeholder="1.0, 8\n2.0, 14\n3.0, 22, 45", height=100)
+        st.markdown("**CPT readings** — one per line: `depth, qc_MPa` or `depth, qc_MPa, fs_kPa`")
+        cpt_text = st.text_area("CPT data", placeholder="1.0, 3.2\n2.0, 5.6", height=100)
+        st.markdown(
+            "**Lab test results** — one per line: `depth, test_type, key=value, key=value...`\n"
+            "test_type: triaxial_cu / triaxial_uu / direct_shear / unconfined_compression / bulk_density\n"
+            "keys: phi=, c=, cu=, unit_weight="
+        )
+        lab_text = st.text_area("Lab data", placeholder="2.5, triaxial_cu, phi=28, c=2\n3.0, bulk_density, unit_weight=19.2", height=100)
+        add_submitted = st.form_submit_button("Add stratum to profile")
 
-    st.markdown(
-        "**Lab test results** — one per line: `depth, test_type, key=value, key=value...`\n"
-        "test_type: triaxial_cu / triaxial_uu / direct_shear / unconfined_compression / bulk_density\n"
-        "keys: phi=, c=, cu=, unit_weight="
-    )
-    lab_text = st.text_area("Lab data", placeholder="2.5, triaxial_cu, phi=28, c=2\n3.0, bulk_density, unit_weight=19.2", height=100)
-
-    if st.button("Interpret this stratum"):
-        spt_readings, spt_unparsed = parse_spt_lines(spt_text)
-        cpt_readings, cpt_unparsed = parse_cpt_lines(cpt_text)
-        lab_tests, lab_unparsed = parse_lab_lines(lab_text)
-
-        for u in spt_unparsed:
-            st.warning(f"Could not parse SPT line: '{u}'")
-        for u in cpt_unparsed:
-            st.warning(f"Could not parse CPT line: '{u}'")
-        for u in lab_unparsed:
-            st.warning(f"Could not parse lab test line: '{u}'")
-
-        try:
-            stratum = Stratum(
-                name="stratum_1",
-                top_depth_m=top_depth_m,
-                base_depth_m=base_depth_m,
-                behavior=behavior,
-                assumed_unit_weight_kn_m3=assumed_unit_weight,
-                spt_readings=spt_readings,
-                cpt_readings=cpt_readings,
-                lab_tests=lab_tests,
-            )
-            site = SiteInvestigation(water_table_depth_m=water_table_depth_m, strata=[stratum])
-        except ValidationError as exc:
-            st.error("Could not build the ground model:")
-            for err in exc.errors():
-                st.error(f"- {'.'.join(str(p) for p in err['loc'])}: {err['msg']}")
-            return
-
-        design_params, notes = interpret_stratum(site, stratum)
-
-        st.subheader("Derived characteristic parameters")
-        if design_params.phi_deg is not None:
-            st.metric("Characteristic phi' (deg)", f"{design_params.phi_deg:.1f}")
-        if design_params.cu_kpa is not None:
-            st.metric("Characteristic cu (kPa)", f"{design_params.cu_kpa:.1f}")
-        st.metric("Characteristic unit weight (kN/m^3)", f"{design_params.unit_weight_kn_m3:.1f}")
-
-        with st.expander("Derivation notes"):
-            for n in notes:
-                st.text(n)
-        for w in design_params.warnings:
-            st.warning(w)
-
-        # Ground-model interpretation re-derives the full set of bearing-resistance
-        # prefill fields atomically each time, so replace rather than merge (unlike
-        # _apply_handoffs' per-field accumulation for other targets).
-        _prefill_store()[BEARING_MODULE.key] = to_bearing_resistance_kwargs(design_params)
-        _prefill_versions()[BEARING_MODULE.key] = _prefill_versions().get(BEARING_MODULE.key, 0) + 1
-        st.success(f"Derived parameters saved — open '{BEARING_MODULE.name}' to use them; they'll be pre-filled.")
-        if st.button(f"Open {BEARING_MODULE.name} →", key="jump__ground_model__bearing"):
-            st.session_state["selected_key"] = BEARING_MODULE.key
+    if add_submitted:
+        if base_depth_m <= top_depth_m:
+            st.error("Base depth must be greater than top depth — stratum not added.")
+        else:
+            strata.append({
+                "name": name.strip() or f"Stratum {len(strata) + 1}",
+                "behavior": behavior,
+                "top_depth_m": top_depth_m,
+                "base_depth_m": base_depth_m,
+                "assumed_unit_weight_kn_m3": assumed_unit_weight,
+                "spt_text": spt_text,
+                "cpt_text": cpt_text,
+                "lab_text": lab_text,
+            })
+            st.session_state.pop("gi_profile_result", None)
             st.rerun()
+
+    if not strata:
+        st.info("Add at least one stratum above (or import from a GI report) to interpret a profile.")
+        return
+
+    st.markdown("### Profile so far")
+    for i, s in enumerate(strata):
+        cols = st.columns([5, 1])
+        cols[0].write(f"**{s['name']}** — {s['behavior']}, {s['top_depth_m']:.2f}–{s['base_depth_m']:.2f} m bgl")
+        if cols[1].button("Remove", key=f"remove_stratum__{i}"):
+            strata.pop(i)
+            st.session_state.pop("gi_profile_result", None)
+            st.rerun()
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("Interpret full profile", key="interpret_profile", type="primary"):
+            _interpret_profile(strata, water_table_depth_m)
+    with col2:
+        if st.button("Clear all strata", key="clear_all_strata"):
+            st.session_state["gi_strata"] = []
+            st.session_state.pop("gi_profile_result", None)
+            st.rerun()
+
+    _render_profile_result()
 
 
 def _discipline_sort_index(discipline: str) -> int:
