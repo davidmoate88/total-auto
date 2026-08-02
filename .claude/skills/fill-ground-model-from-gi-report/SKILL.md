@@ -17,14 +17,30 @@ governing rule exactly, applied one level up: not just individual readings,
 but stratum *boundaries* and *behaviour classifications* too. A value,
 reading, boundary, or classification you cannot read with real confidence
 from the source document must be **left out of the output entirely** -- not
-guessed, not interpolated between two readings, not assumed from a "typical"
-soil description. An omitted stratum or reading just means the engineer adds
-or corrects it by hand in the app, exactly as if this skill had never run
-for that piece -- a safe, expected outcome. A wrong stratum boundary or a
-misclassified behaviour (granular vs cohesive) silently changes which
-correlation formula runs and which overburden stress every deeper stratum
-sees -- worse than an empty field, because nothing about the output looks
-incomplete.
+guessed, not interpolated between two readings, not invented. An omitted
+stratum or reading just means the engineer adds or corrects it by hand in
+the app, exactly as if this skill had never run for that piece -- a safe,
+expected outcome. A wrong stratum boundary or a misclassified behaviour
+(granular vs cohesive) silently changes which correlation formula runs and
+which overburden stress every deeper stratum sees -- worse than an empty
+field, because nothing about the output looks incomplete.
+
+**One narrow, explicitly-bounded exception**, added after a real run
+against a GI report with soil descriptions but no lab bulk density testing
+(common -- density testing is often out of scope for a routine
+investigation): `assumed_unit_weight_kn_m3` MAY be estimated from the
+stratum's own *stated* BS 5930 consistency (cohesive) or relative density
+(granular) descriptor, using the correlation table in Step 3 -- this is a
+standard, citable UK geotechnical practice correlation, not a per-document
+guess, the same category as the SPT/CPT correlations already embedded in
+`calcs/geotechnical/interpretation/correlations.py`. It does NOT relax
+anything else: still no invented depths, no invented behaviour
+classifications, no invented readings, and -- critically -- still no unit
+weight when the log's description doesn't actually state a consistency/
+density term (e.g. "medium SAND" is a grain-size term, not a density term;
+it doesn't qualify). Every estimated value MUST be disclosed as an estimate
+in the extraction notes (Step 6), per stratum, with the descriptor it came
+from.
 
 ## Step 1 -- read the live model and format rules (always, every run)
 
@@ -96,14 +112,41 @@ where this is stated, unambiguously?*
   "sandy CLAY" -> cohesive) -- but if the log's own wording is genuinely
   ambiguous about which behaviour governs, leave that stratum out and flag
   it rather than guess.
-- **`assumed_unit_weight_kn_m3`** -- only if the log or an accompanying lab
-  summary states a bulk density/unit weight *for that specific stratum*.
-  This is a REQUIRED field on `Stratum` with no safe default (unlike some
-  calc-module defaults elsewhere in this repo), so if genuinely not stated,
-  that whole stratum cannot be included in the output JSON -- note it in
-  Step 5 as needing the engineer's own typical-value judgement, same as the
-  tool's own UI does when a stratum has no lab bulk density data (it warns
-  and falls back to whatever the engineer enters).
+- **`assumed_unit_weight_kn_m3`** -- REQUIRED on `Stratum`, no safe default,
+  so a stratum without a value here cannot be included in the output JSON
+  at all. Two ways to get one, in priority order:
+  1. **Lab-measured, if the log or an accompanying lab summary states a
+     bulk density/unit weight for that specific stratum.** Always prefer
+     this when present.
+  2. **Estimated from the log's own stated consistency/relative-density
+     descriptor**, per the exception above, using this table (typical UK
+     geotechnical practice values; conservative/lower end used where the
+     log states a transitional range, e.g. "soft to firm" -> use the
+     "soft" row -- consistent with `characteristic_value()`'s own
+     minimum-biased rule in `ground_model.py`):
+
+     | Cohesive consistency | kN/m³ | Granular relative density | kN/m³ |
+     |---|---|---|---|
+     | Very soft | 16 | Very loose | 15 |
+     | Soft | 17 | Loose | 17 |
+     | Firm | 18 | Medium dense | 18 |
+     | Stiff | 19 | Dense | 20 |
+     | Very stiff / Hard | 20 | Very dense | 21 |
+
+     These figures are recalled from general geotechnical training
+     knowledge, not verified against a specific purchased reference in this
+     environment -- same "verify before real use" caveat this repo applies
+     to every other illustrative value (see `bearing_capacity.py`'s Ngamma
+     caveat). Flag them as such in the extraction notes; don't present them
+     as measured.
+
+  If neither applies -- no lab value, AND no consistency/density term
+  actually stated for that layer (a bare grain-size description like
+  "medium SAND" doesn't count, "medium" there is grain size, not relative
+  density) -- leave the stratum out, same as always. Note it in Step 6 as
+  needing the engineer's own manual entry, same as the tool's own UI does
+  when a stratum has no lab bulk density data (it warns and falls back to
+  whatever the engineer enters).
 - **SPT/CPT/lab readings** -- transcribe each into the exact paste format
   from Step 1, one reading per line, only for readings that fall within
   that stratum's own depth range (the tool rejects a reading outside its
@@ -189,8 +232,13 @@ level up (about the profile as a whole, not just individual fields):
   this is exactly the kind of thing a reviewer should see before trusting a
   single-borehole profile for design.
 - **Every stratum or reading deliberately left out, and why** (ambiguous
-  boundary, no stated unit weight, reading outside a stratum's depth range,
-  genuinely mixed/unclear soil description).
+  boundary, no stated unit weight AND no usable consistency/density
+  descriptor either, reading outside a stratum's depth range, genuinely
+  mixed/unclear soil description).
+- **Which strata's `assumed_unit_weight_kn_m3` is lab-measured vs.
+  estimated from a consistency/density descriptor** (per the Step 3
+  exception) -- state the descriptor used for each estimated one, so the
+  engineer knows exactly which numbers to treat as provisional.
 - **The water table condition**, including any multiple-strike discrepancy
   noted in Step 4.
 
