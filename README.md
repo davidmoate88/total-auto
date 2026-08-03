@@ -710,6 +710,59 @@ field intact, and the incomplete one was correctly skipped with a clear
 "missing required field(s)" message rather than silently dropped or
 half-imported.
 
+**Three document-intake skills: standards register, constraints register,
+foundation/levels synthesis.** The user's ask started as "maybe we should
+build a skill for basis of design" but scoped into something bigger once
+discussed: dump a full set of client documents (contract, Employer's
+Requirements, planning docs, GI, FRA, drainage calcs) and get back a risk
+register (blocked, pending the user's own XLSX template — not built yet),
+a constraints register, a standards register flagging anything unusual,
+and derived foundation/levels options. Two scoping decisions, both made
+explicitly rather than assumed:
+- **Separate skills per deliverable**, not one combined pipeline — matches
+  how every skill in this repo has been scoped so far (one skill, one
+  clear job), and the four jobs genuinely need different source-document
+  handling.
+- **Foundation/levels synthesis stops at "what do the documents already
+  say, plus which `calcs/` module to run next"** — no invented foundation
+  type, depth, or level. This was the one place flagged as a real
+  departure from every other module in this repo if scoped the other way
+  (a skill inventing an engineering conclusion from a document summary,
+  with no calculation behind it), and the user chose the conservative
+  option.
+
+`.claude/skills/build-standards-register/` reuses real leverage already in
+the repo rather than a hand-maintained "expected standards" list: every
+`basis_of_design/*.py` module already declares its discipline's standards
+as `Standard` entries (65+ across the five disciplines, from `BS 7671`
+through `ASME B31.3` to `CIRIA C753`), so "flag anything unusual" has an
+actual baseline to compare against, read fresh every run (a `grep` one-
+liner in the skill's own Step 1, not a copy that can drift). A citation
+gets one of four flags — not in the baseline, cited in an unexpected
+discipline's document, possibly superseded (only when genuinely confident,
+never guessed), or an unidentifiable reference like "the relevant British
+Standard" — rather than a blanket "wrong."
+
+`.claude/skills/build-constraints-register/` has no existing model to
+build against (unlike standards), so it proposes a column structure
+(category, description, source, discipline(s) affected, stated
+implication) explicitly flagged as adjustable, not something read from the
+codebase the way the standards baseline is.
+
+`.claude/skills/synthesize-foundation-levels-options/` leans hard on a
+real pattern found while testing the ground-model skill on an actual GI
+report: GI reports usually already contain the geotechnical engineer's own
+foundation recommendation (the Bramley report's own §9 said piled
+foundations, helical piles specifically, with reasons) — transcribing that
+is extraction, not derivation, and is the single most valuable thing this
+skill does. It cross-references the specific `calcs/geotechnical/`,
+`calcs/civil/`, and `calcs/structural/` module keys relevant to whatever
+the documents raise (bearing resistance, retaining structures, slope
+stability, cut/fill balance, base plate design), and explicitly calls out
+piled foundations as a current gap — no `calcs/` module covers pile design
+yet — rather than silently omitting the cross-reference when the GI's own
+recommendation is exactly the case this repo can't yet calculate.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs) plus independent
 verification of every illustrative value flagged throughout the detail
@@ -875,8 +928,14 @@ total-auto/
 │   └── skills/
 │       ├── fill-calc-inputs-from-drawings/
 │       │   └── SKILL.md            # Claude Code skill: reads a GA/SLD/schedule, produces JSON matching calcs.schema_export's shape for app.py's import feature
-│       └── fill-ground-model-from-gi-report/
-│           └── SKILL.md            # Claude Code skill: reads a GI report, produces JSON strata for the ground model interpreter's "Import GI-derived strata" feature
+│       ├── fill-ground-model-from-gi-report/
+│       │   └── SKILL.md            # Claude Code skill: reads a GI report, produces JSON strata for the ground model interpreter's "Import GI-derived strata" feature
+│       ├── build-standards-register/
+│       │   └── SKILL.md            # Claude Code skill: reads a project document dump, flags standards unusual vs. the baseline already declared across basis_of_design/*.py
+│       ├── build-constraints-register/
+│       │   └── SKILL.md            # Claude Code skill: reads a project document dump, extracts stated site/planning/environmental/access constraints
+│       └── synthesize-foundation-levels-options/
+│           └── SKILL.md            # Claude Code skill: transcribes what GI/FRA/drainage docs already say about foundations/levels, cross-referenced to relevant calcs/ modules -- no invented values
 └── docs/
     ├── ARCHITECTURE.md             # Domain map, design principles, integration points
     ├── ROADMAP.md                  # Full vision and build order

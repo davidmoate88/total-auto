@@ -823,6 +823,44 @@ plan, not a user manual.
       (missing `base_depth_m`/`assumed_unit_weight_kn_m3`) -- the two
       complete strata imported intact, the incomplete one correctly
       skipped with a clear "missing required field(s)" message.
+- [x] Three document-intake skills: standards register, constraints
+      register, foundation/levels synthesis -- scoped down from an
+      open-ended "build a skill for basis of design" ask into four
+      narrower deliverables from one client document dump (contract, ERs,
+      planning docs, GI, FRA, drainage calcs): a risk register (user's own
+      XLSX format, not yet provided -- held, not built), a standards
+      register, a constraints register, and a foundation/levels options
+      synthesis. Two scoping decisions made explicitly with the user
+      rather than assumed: separate skills per deliverable (not one
+      pipeline, matching this repo's one-skill-one-job pattern) and
+      foundation/levels synthesis stops at "what do the documents already
+      say, plus which calcs/ module to run next" -- no invented foundation
+      type, depth, or level, the one place flagged as a real departure
+      from every other module in this repo if scoped the other way.
+      `.claude/skills/build-standards-register/` reuses real leverage
+      already in the repo: every basis_of_design/*.py module already
+      declares its discipline's expected standards (65+ codes across five
+      disciplines), read fresh every run, not a hand-maintained copy --
+      citations get flagged as not-in-baseline / unexpected-discipline-
+      context / possibly-superseded (only when genuinely confident) /
+      unidentifiable, never a blanket "wrong."
+      `.claude/skills/build-constraints-register/` has no existing model
+      to build against, so it proposes a category structure explicitly
+      flagged as adjustable.
+      `.claude/skills/synthesize-foundation-levels-options/` leans on a
+      pattern found testing the ground-model skill against a real GI
+      report: GI reports usually already contain the geotechnical
+      engineer's own foundation recommendation (the Bramley report's own
+      Section 9 recommended piled/helical foundations, with reasons) --
+      transcribing that is extraction, not derivation. Cross-references
+      the specific calcs/geotechnical/, calcs/civil/, and
+      calcs/structural/ module keys relevant to whatever the documents
+      raise, and explicitly flags piled foundations as a current calcs/
+      gap rather than silently omitting the cross-reference.
+- [ ] `build-risk-register` skill -- blocked on the user providing their
+      own XLSX template; deliberately not building against a guessed
+      column structure, unlike the constraints register (which had no
+      existing format to defer to).
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text

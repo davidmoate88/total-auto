@@ -438,6 +438,55 @@ profile would itself be an invented number, so the skill picks ONE
 representative log and states which (and why) in its extraction notes,
 rather than averaging boundary depths across logs.
 
+**Three document-intake skills: standards, constraints, foundation/levels
+synthesis.** Scoped from an open-ended ask ("build a skill for basis of
+design") into four narrower deliverables from one client document dump
+(contract, ERs, planning docs, GI, FRA, drainage calcs): a risk register
+(user's own XLSX format, not yet provided -- held), a standards register, a
+constraints register, and a foundation/levels options synthesis. Built as
+separate skills rather than one pipeline, matching this repo's existing
+one-skill-one-job pattern, since the four jobs genuinely need different
+source-document handling and different output shapes.
+
+- **`.claude/skills/build-standards-register/`** reuses real data already
+  in the repo instead of a hand-maintained comparison list: every
+  `basis_of_design/*.py` module already declares its discipline's expected
+  standards as `Standard` entries (`basis_of_design/core.py`) -- 65+ codes
+  across the five disciplines. The skill's Step 1 reads them fresh every
+  run (a `grep` one-liner, not a snapshot baked into the skill file, same
+  "read live, not remembered" discipline as `fill-calc-inputs-from-
+  drawings`'s schema-export step), then classifies every citation found in
+  the source documents as expected / not in the baseline / cited in an
+  unexpected discipline's document / possibly superseded (only when
+  genuinely confident -- a false "this is outdated" claim is exactly the
+  kind of invented confidence this skill exists to avoid) / unidentifiable.
+  "Not in the baseline" is deliberately not presented as an error -- it may
+  be entirely legitimate, just not something this portfolio's disciplines
+  have cited before.
+- **`.claude/skills/build-constraints-register/`** has no existing model to
+  build against (unlike standards) -- it proposes a category structure
+  (Planning/Environmental/Ground/Utilities/Access/Legal) explicitly flagged
+  in its own text as adjustable, the same way the risk register works from
+  a user-supplied format rather than one this skill invents.
+- **`.claude/skills/synthesize-foundation-levels-options/`** is the one
+  that needed the most explicit scope discussion, because "derive a
+  foundation solution from documents" sits close to the exact kind of
+  unverified engineering judgment every calc module and skill in this repo
+  deliberately avoids producing. Scoped conservatively, by the user's
+  explicit choice over a version that would output actual recommended
+  values: the skill transcribes what the documents already state (most
+  usefully, a GI report's own foundation recommendation section -- real GI
+  reports commonly include one, e.g. "piled foundations recommended,
+  helical piles preferred, for the reasons stated" -- discovered while
+  testing `fill-ground-model-from-gi-report` against a real report) and
+  cross-references the specific `calcs/geotechnical/`, `calcs/civil/`, and
+  `calcs/structural/` module keys relevant to what was found, rather than
+  deriving a foundation type, depth, or level itself. It explicitly flags
+  piled foundations as a current gap in `calcs/` (no module exists yet) --
+  surfacing that gap rather than silently dropping the cross-reference is
+  the whole point when a GI's own recommendation is exactly the case this
+  repo can't yet calculate.
+
 ## Civils calcs (`calcs/civil/`) and cross-domain DA1 reuse
 
 The first two `calcs/civil/` modules answer `retaining_structures`'s two
