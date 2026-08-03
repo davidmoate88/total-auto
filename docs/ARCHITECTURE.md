@@ -487,6 +487,40 @@ source-document handling and different output shapes.
   the whole point when a GI's own recommendation is exactly the case this
   repo can't yet calculate.
 
+**Fourth document-intake skill: `build-risk-register`**, built once the
+user supplied their own template (`Newport BESS Risk Register.xlsx`).
+Structurally different from the other three in one respect: it needs a
+*content* library, not just a comparison baseline, since a risk register's
+entries are drawn from precedent as much as from any single project's own
+documents. `.claude/skills/build-risk-register/reference_risk_library.json`
+is that library -- 60 real risk entries extracted from the user's own
+supplied template and classified into three tiers (`tier1_standard`, 42
+risks that recur on essentially any UK BESS project; `tier2_pattern`, 15
+risks that are a recurring type but whose original wording is tied to the
+source project's own specifics, each carrying an `adaptation_note`;
+`tier3_dated`, 4 time/event-specific risks excluded by default). This
+classification is itself a judgement call made once, up front, rather than
+re-derived every run -- explicitly flagged in the skill's own text as
+something worth periodically refreshing if the user delivers more project
+registers over time, the same "read live, not remembered" discipline
+`build-standards-register` applies to its own baseline, just on a slower
+cadence since the library lives in the repo rather than in a file that
+changes on every run.
+
+The skill still reads the user's *template structure* fresh every run
+(headers, dropdown lists, formula patterns, the next empty row) rather than
+assuming the shape captured when the skill was written stays current --
+same discipline as every other skill's Step 1. And it keeps one narrow,
+explicit exception to the "never guess" rule that the other three don't
+need: Impact/Probability scores are always proposed, never asserted as
+settled, because risk scoring is a genuine team/workshop judgement in real
+practice. Every proposed score gets written into the template's own
+free-text comments column (reusing an existing column rather than adding
+one the template doesn't have -- the `anthropic-skills:xlsx` skill's own
+"match its conventions exactly" rule) prefixed `[DRAFT -- confirm at risk
+workshop]`. Writing the actual `.xlsx` defers entirely to that skill's own
+openpyxl/formula-safety/`recalc.py` guidance rather than duplicating it.
+
 ## Civils calcs (`calcs/civil/`) and cross-domain DA1 reuse
 
 The first two `calcs/civil/` modules answer `retaining_structures`'s two

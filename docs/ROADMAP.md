@@ -857,10 +857,37 @@ plan, not a user manual.
       calcs/structural/ module keys relevant to whatever the documents
       raise, and explicitly flags piled foundations as a current calcs/
       gap rather than silently omitting the cross-reference.
-- [ ] `build-risk-register` skill -- blocked on the user providing their
-      own XLSX template; deliberately not building against a guessed
-      column structure, unlike the constraints register (which had no
-      existing format to defer to).
+- [x] `build-risk-register` skill -- built once the user supplied their own
+      template (Newport BESS Risk Register.xlsx, a real, populated 60-row
+      project register, not a blank form). Structurally different from the
+      other three document-intake skills: needs a content library, not
+      just a comparison baseline, since risk register entries come from
+      precedent as much as from any one project's documents.
+      `.claude/skills/build-risk-register/reference_risk_library.json`
+      holds all 60 real entries classified into three tiers: 42
+      `tier1_standard` risks (recur on essentially any UK BESS project --
+      CDM compliance, fire HSE, security, weather -- reused close to
+      verbatim), 15 `tier2_pattern` risks (a recurring type, but original
+      wording tied to the source project's own specifics -- a named
+      planning condition, DNO process, or supplier -- each carrying an
+      adaptation_note on what to re-derive), and 4 `tier3_dated` risks (a
+      pandemic, a named conflict -- excluded by default, only reintroduced
+      generically if the new project's own documents raise an active
+      equivalent). This classification was a judgement call made once,
+      up front, not re-derived every run -- flagged in the skill's own
+      text as worth periodically refreshing if more project registers get
+      delivered over time. The skill still reads the user's template
+      *structure* fresh every run (headers, dropdowns, formula patterns,
+      next empty row), same discipline as the other three. One narrow,
+      explicit exception to "never guess" that the other three don't need:
+      Impact/Probability scores are always proposed, never asserted as
+      settled -- written into the template's own free-text comments column
+      (reusing an existing column, not adding one) prefixed "[DRAFT --
+      confirm at risk workshop]", since risk scoring is a genuine team/
+      workshop judgement in real practice, not a drafting decision.
+      Writing the actual .xlsx defers entirely to the anthropic-skills:xlsx
+      skill's own openpyxl/formula-safety/recalc.py guidance rather than
+      duplicating it.
 - [ ] PDF export of the review sheet (currently markdown only).
 - [ ] Independent verification of the Annex D formulae/DA1 partial factors used in
       `bearing_capacity.py` against the actual current BS EN 1997-1 standard text

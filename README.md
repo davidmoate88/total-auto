@@ -763,6 +763,34 @@ piled foundations as a current gap — no `calcs/` module covers pile design
 yet — rather than silently omitting the cross-reference when the GI's own
 recommendation is exactly the case this repo can't yet calculate.
 
+**Fourth document-intake skill: `build-risk-register`**, the one held back
+pending the user's own XLSX template. `.claude/skills/build-risk-register/`
+reads a user-supplied template's *live* structure every run (columns,
+dropdown lists, formula patterns — never assumed, since a template can
+evolve) and produces a new register seeded from
+`reference_risk_library.json`, a reusable starter library bundled in the
+skill's own directory, extracted once from a real, previously-delivered
+project register (Newport BESS, May 2025, 60 real risk entries) and
+classified into three tiers: `tier1_standard` (42 risks that recur on
+essentially any UK BESS project — CDM compliance, fire HSE, security,
+weather — reused close to verbatim), `tier2_pattern` (15 risks that are a
+recurring *type* but whose original wording ties to the source project's
+own specifics — a named planning condition, a named DNO process, a named
+supplier — each carrying an explicit note on what to re-derive from the
+new project's own documents rather than reuse verbatim), and `tier3_dated`
+(4 risks — a pandemic, a named geopolitical conflict — excluded by default
+as no longer live concerns, only reintroduced generically if the new
+project's documents raise an active equivalent). The one deliberate,
+narrow exception to this whole family of skills' "never guess" rule:
+Impact/Probability scores are always *proposed*, never asserted as
+settled — risk scoring is a team/workshop judgement in real practice, not
+a drafting decision, so every score gets written into the template's own
+free-text comments column prefixed `[DRAFT — confirm at risk workshop]`
+rather than added as a silent, confident-looking number. Writing the
+actual `.xlsx` output defers entirely to the `anthropic-skills:xlsx`
+skill's own openpyxl/formula/`recalc.py` guidance rather than
+re-inventing it.
+
 The natural next step is more `calcs/<discipline>/` modules (block tearing,
 base plate bending, highways/pavement civils calcs) plus independent
 verification of every illustrative value flagged throughout the detail
@@ -934,8 +962,11 @@ total-auto/
 │       │   └── SKILL.md            # Claude Code skill: reads a project document dump, flags standards unusual vs. the baseline already declared across basis_of_design/*.py
 │       ├── build-constraints-register/
 │       │   └── SKILL.md            # Claude Code skill: reads a project document dump, extracts stated site/planning/environmental/access constraints
-│       └── synthesize-foundation-levels-options/
-│           └── SKILL.md            # Claude Code skill: transcribes what GI/FRA/drainage docs already say about foundations/levels, cross-referenced to relevant calcs/ modules -- no invented values
+│       ├── synthesize-foundation-levels-options/
+│       │   └── SKILL.md            # Claude Code skill: transcribes what GI/FRA/drainage docs already say about foundations/levels, cross-referenced to relevant calcs/ modules -- no invented values
+│       └── build-risk-register/
+│           ├── SKILL.md            # Claude Code skill: builds an .xlsx risk register matching a user-supplied template, seeded from reference_risk_library.json
+│           └── reference_risk_library.json  # Reusable starter risk library (60 entries, tiered), extracted from a real delivered project register
 └── docs/
     ├── ARCHITECTURE.md             # Domain map, design principles, integration points
     ├── ROADMAP.md                  # Full vision and build order
